@@ -44,7 +44,7 @@ pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
     }
 
     if isenabled {
-        Ok(Some("BT enabled".to_string()))
+        Ok(Some("Enabled".to_string()))
     } else {
         Ok(None)
     }
