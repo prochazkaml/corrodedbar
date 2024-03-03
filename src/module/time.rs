@@ -14,7 +14,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 	Ok(data)
 }
 
-pub fn run(data: &Vec<modules::ModuleData>, _ts: i64) -> Result<Option<String>, String> {
+pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
 	if let modules::ModuleData::TypeString(fmt) = &data[FORMAT] {
 		return Ok(Some(format!("{}", chrono::Local::now().format(&fmt))));
 	}

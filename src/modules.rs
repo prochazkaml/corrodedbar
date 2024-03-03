@@ -1,5 +1,6 @@
 use crate::config;
 use crate::module::time;
+use std::time::Duration;
 
 pub enum ModuleData {
 	TypeString(String),
@@ -7,7 +8,7 @@ pub enum ModuleData {
 }
 
 type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Vec<ModuleData>, String>;
-type ModuleRunFun = fn(&Vec<ModuleData>, i64) -> Result<Option<String>, String>;
+type ModuleRunFun = fn(&Vec<ModuleData>, Duration) -> Result<Option<String>, String>;
 
 macro_rules! registermodule {
 	($name:ident) => {
@@ -35,8 +36,8 @@ pub struct ModuleRuntime<'a> {
 	pub data: Vec<ModuleData>,
 	pub icon: Option<&'a String>,
 	pub unixsignal: Option<u8>,
-	pub interval: u32,
-	pub startoffset: u32
+	pub interval: Duration,
+	pub startdelay: Duration
 }
 
 pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, String> {
@@ -81,12 +82,12 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 			continue;
 		}
 
-		let interval: u32 = match config::getkeyvalueas(&modsettings, "interval") {
+		let interval: u64 = match config::getkeyvalueas(&modsettings, "interval") {
 			Some(val) => val,
 			None => 1000
 		};
 
-		let startoffset: u32 = match config::getkeyvalueas(&modsettings, "startoffset") {
+		let startdelay: u64 = match config::getkeyvalueas(&modsettings, "startdelay") {
 			Some(val) => val,
 			None => 0
 		};
@@ -98,8 +99,8 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 				data: val,
 				icon: config::getkeyvalue(&modsettings, "icon"),
 				unixsignal: config::getkeyvalueas(&modsettings, "unixsignal"),
-				interval: interval,
-				startoffset: startoffset
+				interval: Duration::from_millis(interval),
+				startdelay: Duration::from_millis(startdelay)
 			}),
 			Err(val) => println!(" -> {}", val)
 		}
