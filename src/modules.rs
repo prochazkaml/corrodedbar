@@ -1,0 +1,111 @@
+use crate::config;
+use crate::module::time;
+
+pub enum ModuleData {
+	TypeString(String),
+	TypeInt32(i32)
+}
+
+type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Vec<ModuleData>, String>;
+type ModuleRunFun = fn(&Vec<ModuleData>, i64) -> Result<Option<String>, String>;
+
+macro_rules! registermodule {
+	($name:ident) => {
+		ModuleImplementation {
+			name: stringify!($name),
+			init: $name::init,
+			run: $name::run
+		}
+	}
+}
+
+pub struct ModuleImplementation {
+	pub name: &'static str,
+	pub init: ModuleInitFun,
+	pub run: ModuleRunFun
+}
+
+pub static MODULELIST: &[ModuleImplementation] = &[
+	registermodule!(time)
+];
+
+pub struct ModuleRuntime<'a> {
+	//pub settings: &'a Vec<config::ConfigKeyValue>,
+	pub module: &'a ModuleImplementation,
+	pub data: Vec<ModuleData>,
+	pub icon: Option<&'a String>,
+	pub unixsignal: Option<u8>,
+	pub interval: u32,
+	pub startoffset: u32
+}
+
+pub fn init(config: &Vec<config::ConfigModule>) -> Option<Vec<ModuleRuntime>> {
+	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
+
+	let enabledmodules: Vec<&str> = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
+		Some(val) => val.split_whitespace().collect(),
+		None => {
+			println!("There are no modules to load - module [general] must contain a list of modules to enable.");
+			return None;
+		}
+	};
+
+	for (i, name) in enabledmodules.iter().enumerate() {
+		println!("[{}/{}] Initializing module {}", i + 1, enabledmodules.len(), name);
+
+		let modsettings = match config::getmodule(&config, name) {
+			Some(val) => val,
+			None => {
+				println!(" -> module is not configured at all, skipping");
+				continue;
+			}
+		};
+
+		let implem = match config::getkeyvalue(&modsettings, "implements") {
+			Some(val) => val,
+			None => {
+				println!(" -> module does not contain an \"implements\" param, skipping");
+				continue;
+			}
+		};
+
+		let mut module: Option<&ModuleImplementation> = None;
+
+		for j in 0..MODULELIST.len() {
+			if implem == MODULELIST[j].name {
+				module = Some(&MODULELIST[j]);
+			}
+		}
+
+		if module.is_none() {
+			println!(" -> could not find an implementation for {}, skipping", implem);
+			continue;
+		}
+
+		let interval: u32 = match config::getkeyvalueas(&modsettings, "interval") {
+			Some(val) => val,
+			None => 1000
+		};
+
+		let startoffset: u32 = match config::getkeyvalueas(&modsettings, "startoffset") {
+			Some(val) => val,
+			None => 0
+		};
+
+		match (module.unwrap().init)(&modsettings) {
+			Ok(val) => loadedmodules.push(ModuleRuntime {
+				//settings: &config[i + 1].settings,
+				module: module.unwrap(),
+				data: val,
+				icon: config::getkeyvalue(&modsettings, "icon"),
+				unixsignal: config::getkeyvalueas(&modsettings, "unixsignal"),
+				interval: interval,
+				startoffset: startoffset
+			}),
+			Err(val) => println!(" -> {}", val)
+		}
+	}
+
+	return Some(loadedmodules);
+}
+
