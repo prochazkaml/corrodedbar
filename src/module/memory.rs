@@ -4,7 +4,7 @@ use crate::modules;
 // used mem = MemTotal - MemAvailable
 
 pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let mut data: Vec<modules::ModuleData> = Vec::new();
+	let data: Vec<modules::ModuleData> = Vec::new();
 
     // TODO - format option
 
