@@ -28,12 +28,28 @@ pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<&'a
 	None
 }
 
+pub fn getkeyvaluedefault<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &'a String) -> &'a String {
+    match getkeyvalue(module, key) {
+        Some(val) => val,
+        None => default
+    }
+}
+
 pub fn getkeyvalueas<T>(module: &Vec<ConfigKeyValue>, key: &str) -> Option<T>
     where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
     match getkeyvalue(module, key) {
         Some(val) => Some(val.parse::<T>().expect("")),
         None => None
+    }
+}
+
+pub fn getkeyvaluedefaultas<T>(module: &Vec<ConfigKeyValue>, key: &str, default: T) -> T
+    where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
+
+    match getkeyvalueas(module, key) {
+        Some(val) => val,
+        None => default
     }
 }
 

@@ -14,22 +14,11 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
     let general = config::getmodule(&config, "general").unwrap();
 
-    // TODO - config::getkeyvaluedefault, config::getkeyvaluedefaultas
+    let defaults: Vec<String> = vec![" ".to_string(), " ".to_string(), "  ".to_string()];
 
-    let leftpad = match config::getkeyvalue(&general, "leftpad") {
-        Some(val) => val,
-        None => " "
-    };
-
-    let rightpad = match config::getkeyvalue(&general, "rightpad") {
-        Some(val) => val,
-        None => " "
-    };
-
-    let delim = match config::getkeyvalue(&general, "delim") {
-        Some(val) => val,
-        None => "  "
-    };
+    let leftpad = config::getkeyvaluedefault(&general, "leftpad", &defaults[0]);
+    let rightpad = config::getkeyvaluedefault(&general, "rightpad", &defaults[1]);
+    let delim = config::getkeyvaluedefault(&general, "delim", &defaults[2]);
 
     loop {
         // Run each scheduled module

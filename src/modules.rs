@@ -82,15 +82,8 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 			continue;
 		}
 
-		let interval: u64 = match config::getkeyvalueas(&modsettings, "interval") {
-			Some(val) => val,
-			None => 1000
-		};
-
-		let startdelay: u64 = match config::getkeyvalueas(&modsettings, "startdelay") {
-			Some(val) => val,
-			None => 0
-		};
+		let interval: u64 = config::getkeyvaluedefaultas(&modsettings, "interval", 1000);
+		let startdelay: u64 = config::getkeyvaluedefaultas(&modsettings, "startdelay", 0);
 
 		match (module.unwrap().init)(&modsettings) {
 			Ok(val) => loadedmodules.push(ModuleRuntime {
