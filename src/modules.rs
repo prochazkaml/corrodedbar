@@ -1,5 +1,5 @@
 use crate::config;
-use crate::module::{battery, time};
+use crate::module::{volume, battery, time};
 use std::time::Duration;
 
 pub enum ModuleData {
@@ -27,6 +27,7 @@ pub struct ModuleImplementation {
 }
 
 pub static MODULELIST: &[ModuleImplementation] = &[
+	registermodule!(volume),
 	registermodule!(battery),
 	registermodule!(time)
 ];
