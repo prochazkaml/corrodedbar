@@ -9,4 +9,6 @@ edition = "2021"
 x11 = "2.21.0"
 chrono = "0.4.34"
 pulsectl-rs = "0.3.2"
+networkmanager = "0.4.1"
+dbus = "0.9.7"
 
