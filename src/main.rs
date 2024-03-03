@@ -3,6 +3,7 @@ mod module;
 mod modules;
 mod scheduler;
 mod wm;
+mod utils;
 
 fn main() {
 	// Load the config file
