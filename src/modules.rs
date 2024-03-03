@@ -1,5 +1,5 @@
 use crate::config;
-use crate::module::{network, bluetooth, memory, uptime, backlight, volume, battery, time};
+use crate::module::{network, bluetooth, memory, uptime, backlight, microphone, volume, battery, time};
 use std::time::Duration;
 
 pub enum ModuleData {
@@ -32,6 +32,7 @@ pub static MODULELIST: &[ModuleImplementation] = &[
 	registermodule!(memory),
 	registermodule!(uptime),
 	registermodule!(backlight),
+	registermodule!(microphone),
 	registermodule!(volume),
 	registermodule!(battery),
 	registermodule!(time)
