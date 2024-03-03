@@ -1,5 +1,6 @@
 pub mod backlight;
 pub mod battery;
+pub mod bluetooth;
 pub mod cpu;
 pub mod memory;
 pub mod microphone;

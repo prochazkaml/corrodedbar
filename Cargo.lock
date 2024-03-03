@@ -84,6 +84,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "dbus",
+ "libc",
  "networkmanager",
  "pulsectl-rs",
  "x11",
