@@ -39,14 +39,13 @@ pub struct ModuleRuntime<'a> {
 	pub startoffset: u32
 }
 
-pub fn init(config: &Vec<config::ConfigModule>) -> Option<Vec<ModuleRuntime>> {
+pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, String> {
 	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
 
 	let enabledmodules: Vec<&str> = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
 		Some(val) => val.split_whitespace().collect(),
 		None => {
-			println!("There are no modules to load - module [general] must contain a list of modules to enable.");
-			return None;
+			return Err("There are no modules to load - module [general] must contain a list of modules to enable.".to_string());
 		}
 	};
 
@@ -106,6 +105,6 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Option<Vec<ModuleRuntime>> {
 		}
 	}
 
-	return Some(loadedmodules);
+	return Ok(loadedmodules);
 }
 

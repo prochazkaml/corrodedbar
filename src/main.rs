@@ -30,20 +30,13 @@ fn main() {
 		}
 	};
 
-	let general = match config::getmodule(&config, "general") {
-		Some(val) => val,
-		None => {
-			println!("The config file is missing the [general] module.");
-			return;
-		}
-	};
-
 	// Initialize all modules
 
 	let loadedmodules = match modules::init(&config) {
-		Some(val) => val,
-		None => {
-			println!("No modules are active. Quitting.");
+		Ok(val) => val,
+		Err(errmsg) => {
+			setrootname(&errmsg);
+			println!("{}", errmsg);
 			return;
 		}
 	};

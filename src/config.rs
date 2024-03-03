@@ -93,6 +93,7 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 
 	let configlines = configcontents.lines();
 
+    let mut foundgeneral: bool = false;
 	let mut currmodule: String;
 	let mut output: Vec<ConfigModule> = Vec::new();
 
@@ -107,6 +108,10 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 
 		if line.chars().nth(0).unwrap() == '[' && line.chars().last().unwrap() == ']' {
             let newmodule = line[1..line.len()-1].to_string();
+
+            if newmodule == "general".to_string() {
+                foundgeneral = true;
+            }
 
 			currmodule = newmodule;
 			
@@ -134,6 +139,10 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 			value: value.to_string()
 		});
 	}
+
+    if !foundgeneral {
+        return Err("The config file is missing the [general] module.".to_string());
+    }
 
 	Ok(output)
 }
