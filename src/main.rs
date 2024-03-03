@@ -2,22 +2,7 @@ mod config;
 mod module;
 mod modules;
 mod scheduler;
-use x11::xlib;
-
-fn setrootname(name: &str) {
-	unsafe {
-		let c_str = std::ffi::CString::new(name).unwrap();
-
-		let dpy = xlib::XOpenDisplay(std::ptr::null());
-
-		let screen = xlib::XDefaultScreen(dpy);
-		let rootwin = xlib::XRootWindow(dpy, screen);
-
-		xlib::XStoreName(dpy, rootwin, c_str.as_ptr());
-
-		xlib::XCloseDisplay(dpy);
-	}
-}
+mod wm;
 
 fn main() {
 	// Load the config file
@@ -25,7 +10,7 @@ fn main() {
 	let config = match config::loadconfig() {
 		Ok(cfg) => cfg,
 		Err(errmsg) => {
-			setrootname(&errmsg);
+			wm::setrootname(&errmsg);
 			println!("{}", errmsg);
 			return;
 		}
@@ -36,7 +21,7 @@ fn main() {
 	let loadedmodules = match modules::init(&config) {
 		Ok(val) => val,
 		Err(errmsg) => {
-			setrootname(&errmsg);
+			wm::setrootname(&errmsg);
 			println!("{}", errmsg);
 			return;
 		}

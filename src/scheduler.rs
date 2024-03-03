@@ -1,5 +1,6 @@
 use crate::config;
 use crate::modules;
+use crate::wm;
 use std::time::{Duration, Instant};
 
 pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRuntime>) {
@@ -23,7 +24,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
     loop {
         // Run each scheduled module
 
-        let elapsed = start.elapsed();
+        let mut elapsed = start.elapsed();
 
         for i in 0..modules.len() {
             if elapsed < counters[i] { continue; }
@@ -60,6 +61,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
         output += rightpad;
 
         println!("'{}'", output);
+        wm::setrootname(&output);
 
         // Figure out how much we have to sleep for
         
@@ -71,11 +73,15 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
             }
         }
 
-        let sleep = leastsleep - start.elapsed();
+        elapsed = start.elapsed();
 
-        println!("Going to sleep for {:?}.", sleep);
+        if leastsleep > elapsed {
+            let sleep = leastsleep - elapsed;
 
-        std::thread::sleep(sleep);
+            println!("Going to sleep for {:?}.", sleep);
+
+            std::thread::sleep(sleep);
+        }
     }
 }
 
