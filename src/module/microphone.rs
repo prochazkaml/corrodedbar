@@ -5,7 +5,7 @@ use pulsectl::controllers::SourceController;
 use pulsectl::controllers::AppControl;
 
 pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let mut data: Vec<modules::ModuleData> = Vec::new();
+	let data: Vec<modules::ModuleData> = Vec::new();
 
 	Ok(data)
 }
