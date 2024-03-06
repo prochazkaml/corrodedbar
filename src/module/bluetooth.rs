@@ -1,15 +1,20 @@
 use crate::config;
 use crate::modules;
 
-pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let data: Vec<modules::ModuleData> = Vec::new();
+const ENABLEDSTR: usize = 0;
 
-    // TODO - custom string
+pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
+	let mut data: Vec<modules::ModuleData> = Vec::new();
+
+	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_enabled") {
+		Some(val) => val.clone(),
+		None => "Enabled".to_string()
+	}));
 
 	Ok(data)
 }
 
-pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     let mut isenabled = false;
 
     unsafe {
@@ -43,10 +48,14 @@ pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
         libc::close(file);
     }
 
-    if isenabled {
-        Ok(Some("Enabled".to_string()))
-    } else {
-        Ok(None)
+    if let modules::ModuleData::TypeString(enstr) = &data[ENABLEDSTR] {
+        return if isenabled {
+            Ok(Some(enstr.to_string()))
+        } else {
+            Ok(None)
+        }
     }
+    
+    Err("Error during init".to_string())
 }
 
