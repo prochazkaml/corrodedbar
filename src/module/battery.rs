@@ -18,7 +18,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 
 	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
 		Some(val) => val.clone(),
-		None => "%i %p%% (%w)".to_string()
+		None => "%i %p%% (%w %e)".to_string()
 	}));
 
 	Ok(data)
@@ -56,14 +56,49 @@ fn getpower(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
         return modules::init_error_msg();
     };
 
-    let file = utils::readline(format!("/sys/class/power_supply/{}/power_now", dev))?;
+    let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
 
-    let power = match file.parse::<f64>() {
-        Ok(val) => val,
-        Err(_) => { return Err("Format error".to_string()); }
-    };
-    
     Ok(Some(format!("{:.1} W", power / 1000000.0)))
+}
+
+fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+    let empty = Ok(Some("--:--".to_string()));
+
+    let modules::ModuleData::TypeString(dev) = &data[DEVICE] else {
+        return modules::init_error_msg();
+    };
+
+    let status = utils::readline(format!("/sys/class/power_supply/{}/status", dev))?;
+
+    let power: u64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
+            
+    if power == 0 {
+        return empty;
+    }
+
+    let energynow: u64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_now", dev))?;
+    
+    match status.as_str() {
+        "Charging" => {
+            let energyfull: u64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_full", dev))?;
+
+            let tillfull = (energyfull - energynow) * 3600 / power;
+
+            Ok(Some(format!("{:0>2}:{:0>2}",
+                tillfull / 3600,
+                (tillfull / 60) % 60
+            )))
+        },
+        "Discharging" => {
+            let tillempty = energynow * 3600 / power;
+
+            Ok(Some(format!("{:0>2}:{:0>2}",
+                tillempty / 3600,
+                (tillempty / 60) % 60
+            )))
+        },
+        _ => { empty }
+    }
 }
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
@@ -75,6 +110,7 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
         fmtopt!('i', geticon),
         fmtopt!('p', getpercentage),
         fmtopt!('w', getpower),
+        fmtopt!('e', getestimate)
     ];
 
     utils::format(fmt, opts, data, _ts)
