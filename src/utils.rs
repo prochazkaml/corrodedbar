@@ -65,3 +65,13 @@ pub fn readline(path: String) -> Result<String, String> {
         None => { return Err("File parse error".to_string()); }
     }
 }
+
+pub fn readlineas<T>(path: String) -> Result<T, String>
+    where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
+    
+    match readline(path)?.parse::<T>() {
+        Ok(val) => Ok(val),
+        Err(_) => { return Err("Format error".to_string()); }
+    }
+}
+
