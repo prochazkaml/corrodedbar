@@ -2,9 +2,17 @@ use crate::config;
 use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, microphone, volume, battery, time};
 use std::time::Duration;
 
+#[allow(dead_code)]
+#[derive(Clone)]
 pub enum ModuleData {
 	TypeString(String),
-	TypeInt32(i32)
+    TypeBool(bool),
+	TypeInt32(i32),
+	TypeUInt32(u32),
+	TypeInt64(i64),
+	TypeUInt64(u64),
+	TypeFloat32(f32),
+	TypeFloat64(f64)
 }
 
 type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Vec<ModuleData>, String>;
