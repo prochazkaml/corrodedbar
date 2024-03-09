@@ -111,3 +111,7 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 	return Ok(loadedmodules);
 }
 
+pub fn init_error_msg() -> Result<Option<String>, String> {
+    return Err("Error during init".to_string());
+}
+

@@ -21,6 +21,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
     let rightpad = config::getkeyvaluedefault(&general, "rightpad", &defaults[1]);
     let delim = config::getkeyvaluedefault(&general, "delim", &defaults[2]);
 
+    // TODO - signals
+
     loop {
         // Run each scheduled module
 
@@ -29,12 +31,12 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
         for i in 0..modules.len() {
             if elapsed < counters[i] { continue; }
 
-            println!("Running module {}.", modules[i].module.name);
+            //println!("Running module {}.", modules[i].module.name);
 
             strings[i] = match (modules[i].module.run)(&modules[i].data, counters[i]) {
                 Ok(val) => val,
                 Err(errmsg) => {
-                    println!(" -> {}", errmsg);
+                    //println!(" -> {}", errmsg);
                     Some(errmsg)
                 }
             };
@@ -69,7 +71,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
         output += rightpad;
 
-        println!("'{}'", output);
+        //println!("'{}'", output);
         wm::setrootname(&output);
 
         // Figure out how much we have to sleep for
@@ -87,7 +89,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
         if leastsleep > elapsed {
             let sleep = leastsleep - elapsed;
 
-            println!("Going to sleep for {:?}.", sleep);
+            //println!("Going to sleep for {:?}.", sleep);
 
             std::thread::sleep(sleep);
         }
