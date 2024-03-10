@@ -1,7 +1,10 @@
 use crate::config;
 use crate::modules;
+use crate::getdata;
 
-const FORMAT: usize = 0;
+enum Data {
+    FORMAT
+}
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
@@ -15,10 +18,8 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 }
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-	if let modules::ModuleData::TypeString(fmt) = &data[FORMAT] {
-		return Ok(Some(format!("{}", chrono::Local::now().format(&fmt))));
-	}
+    getdata!(fmt, FORMAT, TypeString, data);
 
-	Err("Error during init".to_string())
+    Ok(Some(format!("{}", chrono::Local::now().format(&fmt))))
 }
 

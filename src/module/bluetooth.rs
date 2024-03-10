@@ -1,7 +1,9 @@
 use crate::config;
 use crate::modules;
 
-const ENABLEDSTR: usize = 0;
+enum Data {
+    EnabledString
+}
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
@@ -48,7 +50,7 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
         libc::close(file);
     }
 
-    if let modules::ModuleData::TypeString(enstr) = &data[ENABLEDSTR] {
+    if let modules::ModuleData::TypeString(enstr) = &data[Data::EnabledString as usize] {
         return if isenabled {
             Ok(Some(enstr.to_string()))
         } else {

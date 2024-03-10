@@ -2,10 +2,12 @@ use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::fmtopt;
+use crate::getdata;
 
-const FORMAT: usize = 0;
-
-const SUB_UPTIME: usize = 1;
+enum Data {
+    FORMAT,
+    SUBUPTIME
+}
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
@@ -21,9 +23,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 macro_rules! genuptimefun {
 	($fnname:ident, $cap: literal, $div:literal, $mod:literal, $decimals:literal) => {
         pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-            let modules::ModuleData::TypeFloat64(uptime) = &data[SUB_UPTIME] else {
-                return modules::init_error_msg();
-            };
+            getdata!(uptime, SUBUPTIME, TypeFloat64, data);
 
             let uptimeint = (uptime * 1000.0) as u64;
 
@@ -47,9 +47,7 @@ genuptimefun!(getmillis, false, 1, 0, 0);
 genuptimefun!(getmilliscapped, true, 1, 1000, 3);
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let modules::ModuleData::TypeString(fmt) = &data[FORMAT] else {
-        return modules::init_error_msg();
-    };
+    getdata!(fmt, FORMAT, TypeString, data);
 
     let uptime: f64 = utils::readlineas("/proc/uptime".to_string())?;
 

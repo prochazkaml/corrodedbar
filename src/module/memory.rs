@@ -2,13 +2,15 @@ use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::fmtopt;
+use crate::getdata;
 
-const FORMAT: usize = 0;
-
-const SUB_PHYSICALTOTAL: usize = 1;
-const SUB_PHYSICALFREE: usize = 2;
-const SUB_SWAPTOTAL: usize = 3;
-const SUB_SWAPFREE: usize = 4;
+enum Data {
+    FORMAT,
+    SUBPHYSICALTOTAL,
+    SUBPHYSICALFREE,
+    SUBSWAPTOTAL,
+    SUBSWAPFREE
+}
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
@@ -22,15 +24,10 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 }
 
 macro_rules! genmemoryfun {
-	($fnname:ident, $calculateused: literal, $freefield:expr, $totalfield:expr) => {
+	($fnname:ident, $calculateused: literal, $freefield:ident, $totalfield:ident) => {
         pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-            let modules::ModuleData::TypeInt64(total) = &data[$totalfield] else {
-                return modules::init_error_msg();
-            };
-
-            let modules::ModuleData::TypeInt64(free) = &data[$freefield] else {
-                return modules::init_error_msg();
-            };
+            getdata!(total, $totalfield, TypeInt64, data);
+            getdata!(free, $freefield, TypeInt64, data);
 
             Ok(Some(if *free >= 0 && *total > 0 {
                 if $calculateused {
@@ -45,15 +42,13 @@ macro_rules! genmemoryfun {
 	}
 }
 
-genmemoryfun!(getusedphysical, true, SUB_PHYSICALFREE, SUB_PHYSICALTOTAL);
-genmemoryfun!(getfreephysical, false, SUB_PHYSICALFREE, SUB_PHYSICALTOTAL);
-genmemoryfun!(getusedswap, true, SUB_SWAPFREE, SUB_SWAPTOTAL);
-genmemoryfun!(getfreeswap, false, SUB_SWAPFREE, SUB_SWAPTOTAL);
+genmemoryfun!(getusedphysical, true, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
+genmemoryfun!(getfreephysical, false, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
+genmemoryfun!(getusedswap, true, SUBSWAPFREE, SUBSWAPTOTAL);
+genmemoryfun!(getfreeswap, false, SUBSWAPFREE, SUBSWAPTOTAL);
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let modules::ModuleData::TypeString(fmt) = &data[FORMAT] else {
-        return modules::init_error_msg();
-    };
+    getdata!(fmt, FORMAT, TypeString, data);
 
     let file = match std::fs::read_to_string("/proc/meminfo") {
         Ok(val) => val,
@@ -119,5 +114,4 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
 
     utils::format(fmt, opts, &subdata, _ts)
 }
-
 

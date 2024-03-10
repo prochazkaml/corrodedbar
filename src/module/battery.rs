@@ -2,9 +2,12 @@ use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::fmtopt;
+use crate::getdata;
 
-const DEVICE: usize = 0;
-const FORMAT: usize = 1;
+enum Data {
+    DEVICE,
+    FORMAT
+}
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
@@ -25,9 +28,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 }
 
 fn geticon(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let modules::ModuleData::TypeString(dev) = &data[DEVICE] else {
-        return modules::init_error_msg();
-    };
+    getdata!(dev, DEVICE, TypeString, data);
     
     let icons = std::collections::HashMap::from([
         ("Charging".to_string(), "🔌"),
@@ -44,17 +45,13 @@ fn geticon(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
 }
 
 fn getpercentage(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let modules::ModuleData::TypeString(dev) = &data[DEVICE] else {
-        return modules::init_error_msg();
-    };
+    getdata!(dev, DEVICE, TypeString, data);
     
     Ok(Some(utils::readline(format!("/sys/class/power_supply/{}/capacity", dev))?))
 }
 
 fn getpower(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let modules::ModuleData::TypeString(dev) = &data[DEVICE] else {
-        return modules::init_error_msg();
-    };
+    getdata!(dev, DEVICE, TypeString, data);
 
     let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
 
@@ -64,9 +61,7 @@ fn getpower(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
 fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     let empty = Ok(Some("--:--".to_string()));
 
-    let modules::ModuleData::TypeString(dev) = &data[DEVICE] else {
-        return modules::init_error_msg();
-    };
+    getdata!(dev, DEVICE, TypeString, data);
 
     let status = utils::readline(format!("/sys/class/power_supply/{}/status", dev))?;
 
@@ -102,9 +97,7 @@ fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Res
 }
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let modules::ModuleData::TypeString(fmt) = &data[FORMAT] else {
-        return modules::init_error_msg();
-    };
+    getdata!(fmt, FORMAT, TypeString, data);
 
     let opts: &[utils::FormatOption] = &[
         fmtopt!('i', geticon),

@@ -2,6 +2,15 @@ use crate::config;
 use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, microphone, volume, battery, time};
 use std::time::Duration;
 
+#[macro_export]
+macro_rules! getdata {
+    ($to:ident, $idx:ident, $type:ident, $from:ident) => {
+        let modules::ModuleData::$type($to) = &$from[Data::$idx as usize] else {
+            return modules::init_error_msg();
+        };
+    }
+}
+
 #[allow(dead_code)]
 #[derive(Clone)]
 pub enum ModuleData {
