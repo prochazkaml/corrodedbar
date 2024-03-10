@@ -1,17 +1,60 @@
 use crate::config;
 use crate::modules;
+use crate::utils;
+use crate::fmtopt;
 
-// used mem = MemTotal - MemAvailable
+const FORMAT: usize = 0;
 
-pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let data: Vec<modules::ModuleData> = Vec::new();
+const SUB_PHYSICALTOTAL: usize = 1;
+const SUB_PHYSICALFREE: usize = 2;
+const SUB_SWAPTOTAL: usize = 3;
+const SUB_SWAPFREE: usize = 4;
 
-    // TODO - format option
+pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
+	let mut data: Vec<modules::ModuleData> = Vec::new();
+
+	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
+		Some(val) => val.clone(),
+		None => "%p%%/%s%%".to_string()
+	}));
 
 	Ok(data)
 }
 
-pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+macro_rules! genmemoryfun {
+	($fnname:ident, $calculateused: literal, $freefield:expr, $totalfield:expr) => {
+        pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+            let modules::ModuleData::TypeInt64(total) = &data[$totalfield] else {
+                return modules::init_error_msg();
+            };
+
+            let modules::ModuleData::TypeInt64(free) = &data[$freefield] else {
+                return modules::init_error_msg();
+            };
+
+            Ok(Some(if *free >= 0 && *total > 0 {
+                if $calculateused {
+                    format!("{}", (total - free) * 100 / total)
+                } else {
+                    format!("{}", free * 100 / total)
+                }
+            } else {
+                "??".to_string()
+            }))
+        }
+	}
+}
+
+genmemoryfun!(getusedphysical, true, SUB_PHYSICALFREE, SUB_PHYSICALTOTAL);
+genmemoryfun!(getfreephysical, false, SUB_PHYSICALFREE, SUB_PHYSICALTOTAL);
+genmemoryfun!(getusedswap, true, SUB_SWAPFREE, SUB_SWAPTOTAL);
+genmemoryfun!(getfreeswap, false, SUB_SWAPFREE, SUB_SWAPTOTAL);
+
+pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+    let modules::ModuleData::TypeString(fmt) = &data[FORMAT] else {
+        return modules::init_error_msg();
+    };
+
     let file = match std::fs::read_to_string("/proc/meminfo") {
         Ok(val) => val,
         Err(errmsg) => { return Err(format!("File read error: {}", errmsg)); }
@@ -20,7 +63,7 @@ pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
     let lines = file.lines();
 
     let mut total: i64 = -1;
-    let mut avail: i64 = -1;
+    let mut free: i64 = -1;
 
     let mut swaptotal: i64 = -1;
     let mut swapfree: i64 = -1;
@@ -38,7 +81,7 @@ pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
         }
 
         if split[0] == "MemAvailable:" {
-            avail = match split[1].parse::<i64>() {
+            free = match split[1].parse::<i64>() {
                 Ok(val) => val,
                 Err(_) => { return Err("Format error".to_string()); }
             }
@@ -59,20 +102,22 @@ pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
         }
     }
 
-    if total <= 0 || avail <= 0 {
-        return Err("Could not determine".to_string());
-    }
+    let mut subdata = data.clone();
+    subdata.push(modules::ModuleData::TypeInt64(total));
+    subdata.push(modules::ModuleData::TypeInt64(free));
+    subdata.push(modules::ModuleData::TypeInt64(swaptotal));
+    subdata.push(modules::ModuleData::TypeInt64(swapfree));
 
-    if swaptotal > 0 && swapfree >= 0 {
-        Ok(Some(format!("{}%/{}%",
-            (total - avail) * 100 / total,
-            (swaptotal - swapfree) * 100 / swaptotal
-        )))
-    } else {
-        Ok(Some(format!("{}%",
-            (total - avail) * 100 / total,
-        )))
-    }
+    // TODO - display as percentage **or** specific units
+
+    let opts: &[utils::FormatOption] = &[
+        fmtopt!('p', getusedphysical),
+        fmtopt!('P', getfreephysical),
+        fmtopt!('s', getusedswap),
+        fmtopt!('S', getfreeswap),
+    ];
+
+    utils::format(fmt, opts, &subdata, _ts)
 }
 
 
