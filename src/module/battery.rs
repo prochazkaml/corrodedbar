@@ -21,7 +21,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 
 	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
 		Some(val) => val.clone(),
-		None => "%i %p%% (%w %e)".to_string()
+		None => "%i %p%% (%w W %e)".to_string()
 	}));
 
 	Ok(data)
@@ -55,7 +55,7 @@ fn getpower(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
 
     let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
 
-    Ok(Some(format!("{:.1} W", power / 1000000.0)))
+    Ok(Some(format!("{:.1}", power / 1000000.0)))
 }
 
 fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
