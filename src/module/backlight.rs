@@ -4,7 +4,8 @@ use crate::utils;
 use crate::getdata;
 
 enum Data {
-    DEVICE
+    DEVICE,
+    SHOWRAW
 }
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
@@ -17,16 +18,23 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
         }
 	}));
 
+	data.push(modules::ModuleData::TypeBool(config::getkeyvaluedefaultas(config, "_showraw", false)));
+
 	Ok(data)
 }
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    // TODO - add option for displaying as a percentage
-
     getdata!(dev, DEVICE, TypeString, data);
+    getdata!(raw, SHOWRAW, TypeBool, data);
 
-    let curr = utils::readline(format!("/sys/class/backlight/{}/brightness", dev))?;
+    let curr: u32 = utils::readlineas(format!("/sys/class/backlight/{}/brightness", dev))?;
 
-    Ok(Some(format!("{}", curr)))
+    Ok(Some(if *raw {
+        format!("{}", curr)
+    } else {
+        let max: u32 = utils::readlineas(format!("/sys/class/backlight/{}/max_brightness", dev))?;
+
+        format!("{}%", curr * 100 / max)
+    }))
 }
 
