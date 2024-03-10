@@ -23,6 +23,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
     // TODO - signals
 
+    // TODO - listen for config file changes and reload
+
     loop {
         // Run each scheduled module
 
