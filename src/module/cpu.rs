@@ -35,7 +35,7 @@ fn gettemp(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     Ok(Some(format!("{:.1}", currtemp / 1000.0)))
 }
 
-fn getfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+fn getfreq(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     let file = match std::fs::read_to_string("/proc/cpuinfo") {
         Ok(val) => val,
         Err(errmsg) => { return Err(format!("File read error: {}", errmsg)); }
