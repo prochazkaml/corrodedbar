@@ -3,6 +3,7 @@ use crate::modules;
 use crate::utils;
 use crate::fmtopt;
 use crate::getdata;
+use crate::configoptional;
 
 enum Data {
     FORMAT,
@@ -15,10 +16,7 @@ enum Data {
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
 
-	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
-		Some(val) => val.clone(),
-		None => "%p%%/%s%%".to_string()
-	}));
+    configoptional!("_format", TypeString, "%p%%/%s%%", data, config);
 
 	Ok(data)
 }

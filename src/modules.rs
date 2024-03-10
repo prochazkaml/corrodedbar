@@ -3,6 +3,25 @@ use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, micropho
 use std::time::Duration;
 
 #[macro_export]
+macro_rules! configmandatory {
+    ($idx:literal, $type:ident, $to:ident, $from:ident) => {
+        $to.push(modules::ModuleData::$type(match config::getkeyvalue($from, $idx) {
+            Some(val) => val,
+            None => {
+                return Err(format!("Error: {} not defined in the config", $idx));
+            }
+        }));
+    }
+}
+
+#[macro_export]
+macro_rules! configoptional {
+    ($idx:literal, $type:ident, $default:literal, $to:ident, $from:ident) => {
+        $to.push(modules::ModuleData::$type(config::getkeyvaluedefault($from, $idx, $default)));
+    }
+}
+
+#[macro_export]
 macro_rules! getdata {
     ($to:ident, $idx:ident, $type:ident, $from:ident) => {
         let modules::ModuleData::$type($to) = &$from[Data::$idx as usize] else {
@@ -60,7 +79,7 @@ pub struct ModuleRuntime<'a> {
 	//pub settings: &'a Vec<config::ConfigKeyValue>,
 	pub module: &'a ModuleImplementation,
 	pub data: Vec<ModuleData>,
-	pub icon: Option<&'a String>,
+	pub icon: Option<String>,
 	pub unixsignal: Option<u8>,
 	pub interval: Duration,
 	pub startdelay: Duration
@@ -69,12 +88,14 @@ pub struct ModuleRuntime<'a> {
 pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, String> {
 	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
 
-	let enabledmodules: Vec<&str> = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
-		Some(val) => val.split_whitespace().collect(),
+    let cfgmodulesstr = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
+		Some(val) => val,
 		None => {
 			return Err("There are no modules to load - module [general] must contain a list of modules to enable.".to_string());
 		}
 	};
+
+    let enabledmodules: Vec<&str> = cfgmodulesstr.split_whitespace().collect();
 
 	for (i, name) in enabledmodules.iter().enumerate() {
 		println!("[{}/{}] Initializing module {}", i + 1, enabledmodules.len(), name);

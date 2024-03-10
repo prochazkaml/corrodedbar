@@ -18,20 +18,20 @@ pub fn getmodule<'a>(cfg: &'a Vec<ConfigModule>, name: &str) -> Option<&'a Vec<C
 	None
 }
 
-pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<&'a String> {
+pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<String> {
 	let keystr = key.to_string();
 
 	for keyvalue in module {
-		if keyvalue.key == keystr { return Some(&keyvalue.value); }
+		if keyvalue.key == keystr { return Some((keyvalue.value).clone()); }
 	}
 	
 	None
 }
 
-pub fn getkeyvaluedefault<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &'a String) -> &'a String {
+pub fn getkeyvaluedefault<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &str) -> String {
     match getkeyvalue(module, key) {
         Some(val) => val,
-        None => default
+        None => default.to_string()
     }
 }
 

@@ -2,6 +2,7 @@ use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::getdata;
+use crate::configmandatory;
 
 enum Data {
     DEVICE,
@@ -11,12 +12,7 @@ enum Data {
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
 
-	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_device") {
-		Some(val) => val.clone(),
-		None => {
-            return Err("Error: _device missing in the config".to_string());
-        }
-	}));
+    configmandatory!("_device", TypeString, data, config);
 
 	data.push(modules::ModuleData::TypeBool(config::getkeyvaluedefaultas(config, "_showraw", false)));
 

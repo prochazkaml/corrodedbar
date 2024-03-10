@@ -53,9 +53,9 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
         for i in 0..strings.len() {
             match &strings[i] {
                 Some(val) => {
-                    match modules[i].icon {
+                    match &modules[i].icon {
                         Some(val) => { // TODO this is indentation hell
-                            output += val;
+                            output += &val;
                             output += " ";
                         },
                         None => {}
@@ -64,14 +64,14 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
                     output += val;
 
                     if i < strings.len() - 1 {
-                        output += delim;
+                        output += &delim;
                     }
                 },
                 None => {}
             }
         }
 
-        output += rightpad;
+        output += &rightpad;
 
         //println!("'{}'", output);
         wm::setrootname(&output);

@@ -1,6 +1,7 @@
 use crate::config;
 use crate::modules;
 use crate::getdata;
+use crate::configoptional;
 
 enum Data {
     FORMAT
@@ -9,10 +10,7 @@ enum Data {
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
 
-	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
-		Some(val) => val.clone(),
-		None => "%H:%M".to_string()
-	}));
+    configoptional!("_format", TypeString, "%H:%M", data, config);
 
 	Ok(data)
 }

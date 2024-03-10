@@ -1,6 +1,7 @@
 use crate::config;
 use crate::modules;
 use crate::getdata;
+use crate::configoptional;
 
 enum Data {
     ENABLEDSTRING
@@ -9,10 +10,7 @@ enum Data {
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
 
-	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_enabled") {
-		Some(val) => val.clone(),
-		None => "Enabled".to_string()
-	}));
+    configoptional!("_enabled", TypeString, "Enabled", data, config);
 
 	Ok(data)
 }

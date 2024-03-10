@@ -3,6 +3,8 @@ use crate::modules;
 use crate::utils;
 use crate::fmtopt;
 use crate::getdata;
+use crate::configmandatory;
+use crate::configoptional;
 
 enum Data {
     DEVICE,
@@ -11,18 +13,9 @@ enum Data {
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
-
-	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_device") {
-		Some(val) => val.clone(),
-		None => {
-            return Err("Error: _device missing in the config".to_string());
-        }
-	}));
-
-	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
-		Some(val) => val.clone(),
-		None => "%i %p%% (%w W %e)".to_string()
-	}));
+    
+    configmandatory!("_device", TypeString, data, config);
+    configoptional!("_format", TypeString, "%i %p%% (%w W %e)", data, config);
 
 	Ok(data)
 }
