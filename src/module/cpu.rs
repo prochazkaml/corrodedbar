@@ -1,13 +1,16 @@
 use crate::config;
 use crate::modules;
 use crate::utils;
+use crate::fmtopt;
+use crate::getdata;
 
-const TEMPDEVICE: usize = 0;
+enum Data {
+    TEMPDEVICE,
+    FORMAT
+}
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
-
-    // TODO - make the temperature, clock frequency & heaviest process readout not mandatory
 
 	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_tempdevice") {
 		Some(val) => val.clone(),
@@ -16,27 +19,23 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
         }
 	}));
 
+	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
+		Some(val) => val.clone(),
+		None => "%t°C %f MHz".to_string()
+	}));
+
 	Ok(data)
 }
 
-pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let mut output: Vec<String> = Vec::new();
+fn gettemp(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+    getdata!(dev, TEMPDEVICE, TypeString, data);
 
-    // CPU temperature
+    let currtemp: f64 = utils::readlineas(format!("{}", dev))?;
 
-    if let modules::ModuleData::TypeString(dev) = &data[TEMPDEVICE] {
-        let currtempstr = utils::readline(format!("{}", dev))?;
+    Ok(Some(format!("{:.1}", currtemp / 1000.0)))
+}
 
-        let currtemp = match currtempstr.parse::<i32>() {
-            Ok(val) => val,
-            Err(_) => { return Err("Format error".to_string()); }
-        };
-
-        output.push(format!("{:.1}°C", (currtemp as f64) / 1000.0));
-    }
-
-    // Peak CPU clock frequency
-
+fn getfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     let file = match std::fs::read_to_string("/proc/cpuinfo") {
         Ok(val) => val,
         Err(errmsg) => { return Err(format!("File read error: {}", errmsg)); }
@@ -63,29 +62,22 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
         }
     }
     
-    if highestfreq > 0.0 {
-        output.push(format!("{:.0} MHz", highestfreq));
-    }
+    Ok(if highestfreq > 0.0 {
+        Some(format!("{:.0}", highestfreq))
+    } else {
+        None
+    })
+}
 
-    // Heaviest process
-    
-    // TODO
+pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+    getdata!(fmt, FORMAT, TypeString, data);
 
-    // Assemble output
+    let opts: &[utils::FormatOption] = &[
+        fmtopt!('t', gettemp),
+        fmtopt!('f', getfreq),
+        // fmtopt!('p', getprocess), // TODO
+    ];
 
-    let mut outputstr = String::new();
-
-    if output.len() == 0 {
-        return Ok(None);
-    }
-
-    for i in 0..output.len() {
-        outputstr += &output[i];
-        if i < output.len() - 1 {
-            outputstr += " ";
-        }
-    }
-
-    Ok(Some(outputstr))
+    utils::format(fmt, opts, &data, _ts)
 }
 
