@@ -146,13 +146,21 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 			None => { return Err(format!("Syntax error at line {}: expected key/value pair", linenum + 1)); }
 		};
 
+        let mut valuetrim = value.trim();
+
+        if valuetrim.len() <= 0 { continue; }
+
+        if valuetrim.chars().nth(0).unwrap() == '"' && valuetrim.chars().last().unwrap() == '"' {
+            valuetrim = &valuetrim[1..valuetrim.len()-1];
+        }
+
 		if output.len() <= 0 {
 			return Err(format!("Syntax error at line {}: key/value pair found before any module tag", linenum + 1));
 		}
 
 		output.last_mut().unwrap().settings.push(ConfigKeyValue {
-			key: key.to_string(),
-			value: value.to_string()
+			key: key.trim().to_string(),
+			value: valuetrim.to_string()
 		});
 	}
 
