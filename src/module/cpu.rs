@@ -6,7 +6,8 @@ use crate::getdata;
 
 enum Data {
     TEMPDEVICE,
-    FORMAT
+    FORMAT,
+    SUBPROCCPUINFO
 }
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
@@ -21,7 +22,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 
 	data.push(modules::ModuleData::TypeString(match config::getkeyvalue(config, "_format") {
 		Some(val) => val.clone(),
-		None => "%t°C %f MHz".to_string()
+		None => "%t°C %F MHz".to_string()
 	}));
 
 	Ok(data)
@@ -35,15 +36,14 @@ fn gettemp(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     Ok(Some(format!("{:.1}", currtemp / 1000.0)))
 }
 
-fn getfreq(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    let file = match std::fs::read_to_string("/proc/cpuinfo") {
-        Ok(val) => val,
-        Err(errmsg) => { return Err(format!("File read error: {}", errmsg)); }
-    };
+fn getfreq(data: &Vec<modules::ModuleData>, highest: bool) -> Result<Option<String>, String> {
+    getdata!(file, SUBPROCCPUINFO, TypeString, data);
 
     let lines = file.lines();
-    
-    let mut highestfreq: f64 = 0.0;
+
+    let default: f64 = if highest { 0.0 } else { 1000000.0 };
+
+    let mut target: f64 = default;
 
     for line in lines {
         let split: Vec<&str> = line.split_whitespace().collect();
@@ -56,28 +56,40 @@ fn getfreq(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
                 Err(_) => { continue; }
             };
             
-            if freq > highestfreq {
-                highestfreq = freq;
+            if (freq > target && highest) || (freq < target && !highest) {
+                target = freq;
             }
         }
     }
     
-    Ok(if highestfreq > 0.0 {
-        Some(format!("{:.0}", highestfreq))
+    Ok(if target != default {
+        Some(format!("{:.0}", target))
     } else {
         None
     })
 }
 
+fn gethighestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+    getfreq(data, true)
+}
+
+fn getlowestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+    getfreq(data, false)
+}
+
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     getdata!(fmt, FORMAT, TypeString, data);
+    
+    let mut subdata = data.clone();
+    subdata.push(modules::ModuleData::TypeString(utils::readstring("/proc/cpuinfo".to_string())?));
 
     let opts: &[utils::FormatOption] = &[
         fmtopt!('t', gettemp),
-        fmtopt!('f', getfreq),
+        fmtopt!('F', gethighestfreq),
+        fmtopt!('f', getlowestfreq),
         // fmtopt!('p', getprocess), // TODO
     ];
 
-    utils::format(fmt, opts, &data, _ts)
+    utils::format(fmt, opts, &subdata, _ts)
 }
 
