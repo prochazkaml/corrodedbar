@@ -31,6 +31,8 @@ fn callformatfn(c: char, fmtopts: &[FormatOption], data: &Vec<modules::ModuleDat
 pub fn format(fmt: &String, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     let mut out = String::new();
     
+    // TODO - custom number formats?
+
     let mut controlchar = false;
 
     for c in fmt.chars() { match controlchar {
@@ -54,11 +56,17 @@ pub fn format(fmt: &String, fmtopts: &[FormatOption], data: &Vec<modules::Module
     return Ok(Some(out));
 }
 
+pub fn readstring(path: String) -> Result<String, String> {
+    // Yes, this is just a fancy wrapper function.
+    
+    match std::fs::read_to_string(path) {
+        Ok(val) => Ok(val),
+        Err(errmsg) => Err(format!("File read error: {}", errmsg))
+    }
+}
+
 pub fn readline(path: String) -> Result<String, String> {
-    let file = match std::fs::read_to_string(path) {
-        Ok(val) => val,
-        Err(errmsg) => { return Err(format!("File read error: {}", errmsg)); }
-    };
+    let file = readstring(path)?;
 
     match file.lines().next() {
         Some(val) => Ok(val.to_string()),
