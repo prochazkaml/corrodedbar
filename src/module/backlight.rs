@@ -3,6 +3,7 @@ use crate::modules;
 use crate::utils;
 use crate::getdata;
 use crate::configmandatory;
+use crate::configoptional;
 
 enum Data {
     DEVICE,
@@ -13,8 +14,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 	let mut data: Vec<modules::ModuleData> = Vec::new();
 
     configmandatory!("_device", TypeString, data, config);
-
-	data.push(modules::ModuleData::TypeBool(config::getkeyvaluedefaultas(config, "_showraw", false)));
+    configoptional!("_showraw", TypeBool, false, data, config);
 
 	Ok(data)
 }

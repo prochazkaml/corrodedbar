@@ -5,7 +5,7 @@ use std::time::Duration;
 #[macro_export]
 macro_rules! configmandatory {
     ($idx:literal, $type:ident, $to:ident, $from:ident) => {
-        $to.push(modules::ModuleData::$type(match config::getkeyvalue($from, $idx) {
+        $to.push(modules::ModuleData::$type(match config::getkeyvalueas($from, $idx) {
             Some(val) => val,
             None => {
                 return Err(format!("Error: {} not defined in the config", $idx));
@@ -16,8 +16,11 @@ macro_rules! configmandatory {
 
 #[macro_export]
 macro_rules! configoptional {
+    ($idx:literal, TypeString, $default:literal, $to:ident, $from:ident) => {
+        $to.push(modules::ModuleData::TypeString(config::getkeyvaluedefault($from, $idx, $default)));
+    };
     ($idx:literal, $type:ident, $default:literal, $to:ident, $from:ident) => {
-        $to.push(modules::ModuleData::$type(config::getkeyvaluedefault($from, $idx, $default)));
+        $to.push(modules::ModuleData::$type(config::getkeyvaluedefaultas($from, $idx, $default)));
     }
 }
 
