@@ -8,7 +8,8 @@ use crate::configoptional;
 
 enum Data {
     DEVICE,
-    FORMAT
+    FORMAT,
+    ESTTIMEFORMAT
 }
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
@@ -16,6 +17,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
     
     configmandatory!("_device", TypeString, data, config);
     configoptional!("_format", TypeString, "%i %p%% (%w W %e)", data, config);
+    configoptional!("_esttimeformat", TypeString, "%h:%M", data, config);
 
 	Ok(data)
 }
@@ -55,35 +57,26 @@ fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Res
     let empty = Ok(Some("--:--".to_string()));
 
     getdata!(dev, DEVICE, TypeString, data);
+    getdata!(fmt, ESTTIMEFORMAT, TypeString, data);
 
     let status = utils::readline(format!("/sys/class/power_supply/{}/status", dev))?;
 
-    let power: u64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
+    let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
             
-    if power == 0 {
+    if power == 0.0 {
         return empty;
     }
 
-    let energynow: u64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_now", dev))?;
+    let energynow: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_now", dev))?;
     
     match status.as_str() {
         "Charging" => {
-            let energyfull: u64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_full", dev))?;
+            let energyfull: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_full", dev))?;
 
-            let tillfull = (energyfull - energynow) * 3600 / power;
-
-            Ok(Some(format!("{:0>2}:{:0>2}",
-                tillfull / 3600,
-                (tillfull / 60) % 60
-            )))
+            utils::formatduration(&fmt, (energyfull - energynow) * 3600.0 / power)
         },
         "Discharging" => {
-            let tillempty = energynow * 3600 / power;
-
-            Ok(Some(format!("{:0>2}:{:0>2}",
-                tillempty / 3600,
-                (tillempty / 60) % 60
-            )))
+            utils::formatduration(&fmt, energynow * 3600.0 / power)
         },
         _ => { empty }
     }

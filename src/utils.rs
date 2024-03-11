@@ -1,4 +1,5 @@
 use crate::modules;
+use crate::utils;
 
 pub struct FormatOption {
     pub id: char,
@@ -83,5 +84,52 @@ pub fn readlineas<T>(path: String) -> Result<T, String>
         Ok(val) => Ok(val),
         Err(_) => { return Err("Format error".to_string()); }
     }
+}
+
+macro_rules! genuptimefun {
+	($fnname:ident, $cap: literal, $div:literal, $mod:literal, $decimals:literal) => {
+        pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+            let modules::ModuleData::TypeFloat64(time) = &data[0] else {
+                return modules::init_error_msg();
+            };
+
+            let timeint = (time * 1000.0) as u64;
+
+            Ok(Some(if $cap {
+                format!(concat!("{:0>", $decimals, "}"), timeint / $div % $mod)
+            } else {
+                format!("{}", timeint / $div)
+            }))
+        }
+	}
+}
+
+genuptimefun!(getday, false, 86400000, 0, 0);
+genuptimefun!(gethour, false, 3600000, 0, 0);
+genuptimefun!(gethourcapped, true, 3600000, 60, 2);
+genuptimefun!(getminute, false, 60000, 0, 0);
+genuptimefun!(getminutecapped, true, 60000, 60, 2);
+genuptimefun!(getsecond, false, 1000, 0, 0);
+genuptimefun!(getsecondcapped, true, 1000, 60, 2);
+genuptimefun!(getmillis, false, 1, 0, 0);
+genuptimefun!(getmilliscapped, true, 1, 1000, 3);
+
+pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> {
+    let mut data: Vec<modules::ModuleData> = Vec::new();
+    data.push(modules::ModuleData::TypeFloat64(dur));
+
+    let opts: &[utils::FormatOption] = &[
+        fmtopt!('d', getday),
+        fmtopt!('H', gethourcapped),
+        fmtopt!('h', gethour),
+        fmtopt!('M', getminutecapped),
+        fmtopt!('m', getminute),
+        fmtopt!('S', getsecondcapped),
+        fmtopt!('s', getsecond),
+        fmtopt!('L', getmilliscapped),
+        fmtopt!('l', getmillis)
+    ];
+
+    format(&fmt, opts, &data, std::time::Duration::MAX)
 }
 
