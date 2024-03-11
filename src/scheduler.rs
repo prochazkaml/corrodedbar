@@ -1,10 +1,11 @@
 use crate::config;
 use crate::modules;
 use crate::wm;
+use crate::args;
 use std::time::{Duration, Instant};
 use signal_hook::iterator::Signals;
 
-pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRuntime>) {
+pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRuntime>, params: &args::AppParams) {
     let mut counters: Vec<Duration> = Vec::new();
     let mut interrupts: Vec<bool> = vec![false; modules.len()];
     let mut strings: Vec<Option<String>> = vec![None; modules.len()];
@@ -41,12 +42,10 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
     let oldconfigmtime = config::getkeyvaluedefault(&general, "configmtime", "");
 
-    // TODO - make the debug messages available from a commandline flag
-
     loop {
         // Check if the config file has been modified
         
-        if oldconfigmtime.len() > 0 {
+        if !params.noautoreload && oldconfigmtime.len() > 0 {
             match config::getconfigfilemtime() {
                 Ok(val) => if val != oldconfigmtime {
                     return;
@@ -67,7 +66,9 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
                 }
             }
 
-            //println!("Received signal {}.", signal);
+            if params.verbose {
+                println!("Received signal {}.", signal);
+            }
         }
 
         let mut elapsed = start.elapsed();
@@ -75,12 +76,16 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
         for i in 0..modules.len() {
             if elapsed < counters[i] && !interrupts[i] { continue; }
 
-            //println!("Running module {}.", modules[i].module.name);
+            if params.verbose {
+                println!("Running module {}.", modules[i].module.name);
+            }
 
             strings[i] = match (modules[i].module.run)(&modules[i].data, counters[i]) {
                 Ok(val) => val,
                 Err(errmsg) => {
-                    //println!(" -> {}", errmsg);
+                    if params.verbose {
+                        println!(" -> {}", errmsg);
+                    }
                     Some(errmsg)
                 }
             };
@@ -119,7 +124,6 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
         output += &rightpad;
 
-        //println!("'{}'", output);
         wm::setrootname(&output);
 
         // Figure out how much we have to sleep for
@@ -141,7 +145,9 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
                 sleep = maxdelay;
             }
 
-            // println!("Going to sleep for {:?}.", sleep);
+            if params.verbose {
+                println!("Going to sleep for {:?}.", sleep);
+            }
 
             std::thread::sleep(sleep);
         }

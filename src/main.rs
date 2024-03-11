@@ -4,10 +4,9 @@ mod modules;
 mod scheduler;
 mod wm;
 mod utils;
+mod args;
 
-// TODO - make config autoreload disableable with commandline params
-
-fn run() -> bool {
+fn run(params: &args::AppParams) -> bool {
 	// Load the config file
 
 	let config = match config::loadconfig() {
@@ -34,14 +33,16 @@ fn run() -> bool {
 
 	// Start the scheduler
 	
-	scheduler::run(&config, &loadedmodules);
+	scheduler::run(&config, &loadedmodules, params);
 
     true
 }
 
 fn main() {
+    let params = args::init();
+
     loop {
-        match run() {
+        match run(&params) {
             true => {
                 println!("Detected config file change, reloading.");
             },
