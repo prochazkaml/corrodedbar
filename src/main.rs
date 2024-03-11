@@ -5,7 +5,9 @@ mod scheduler;
 mod wm;
 mod utils;
 
-fn main() {
+// TODO - make config autoreload disableable with commandline params
+
+fn run() -> bool {
 	// Load the config file
 
 	let config = match config::loadconfig() {
@@ -13,7 +15,7 @@ fn main() {
 		Err(errmsg) => {
 			wm::setrootname(&errmsg);
 			println!("{}", errmsg);
-			return;
+			return false;
 		}
 	};
 
@@ -24,7 +26,7 @@ fn main() {
 		Err(errmsg) => {
 			wm::setrootname(&errmsg);
 			println!("{}", errmsg);
-			return;
+			return false;
 		}
 	};
 
@@ -33,5 +35,21 @@ fn main() {
 	// Start the scheduler
 	
 	scheduler::run(&config, &loadedmodules);
+
+    true
+}
+
+fn main() {
+    loop {
+        match run() {
+            true => {
+                println!("Detected config file change, reloading.");
+            },
+            false => {
+                println!("Init failed. Will try again in 1s...");
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+            }
+        }
+    }
 }
 

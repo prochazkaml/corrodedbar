@@ -75,9 +75,41 @@ fn getgeneralconfigpath() -> Option<String> {
 
 fn getconfigpath() -> Option<String> {
 	match getgeneralconfigpath() {
-		Some(path) => Some(path + "/corrodedbar"),
+		Some(path) => Some(path + "/corrodedbar/main.conf"),
 		None => None
 	}
+}
+
+pub fn getconfigfilemtime() -> Result<String, String> {
+	let configpath = match getconfigpath() {
+		Some(path) => path,
+		None => {
+			return Err("Could not determine the config directory. Make sure $HOME is set.".to_string());
+		}
+	};
+
+    let metadata = match std::fs::metadata(configpath) {
+        Ok(val) => val,
+        Err(_) => {
+            return Err("Error fetching config file metadata.".to_string());
+        }
+    };
+
+    let modified = match metadata.modified() {
+        Ok(val) => val,
+        Err(_) => {
+            return Err("Error determining config file mtime.".to_string());
+        }
+    };
+
+    let mtime = match modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+        Ok(val) => val.as_millis().to_string(),
+        Err(_) => {
+            return Err("Config file mtime invalid.".to_string());
+        }
+    };
+
+    Ok(mtime)
 }
 
 pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
@@ -88,9 +120,7 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 		}
 	};
 
-	let configfilepath = configpath.clone() + "/main.conf";
-
-	let configcontents = match std::fs::read_to_string(configfilepath.clone()) {
+	let configcontents = match std::fs::read_to_string(configpath.clone()) {
 		Ok(value) => value,
 		Err(_) => {
 			match std::fs::create_dir_all(configpath.clone()) {
@@ -100,9 +130,9 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 
 			let exampleconf = include_str!("example.conf");
 
-			match std::fs::write(configfilepath.clone(), exampleconf) {
+			match std::fs::write(configpath.clone(), exampleconf) {
 				Ok(_) => exampleconf.to_string(),
-				Err(_) => { return Err(format!("Error creating config file: {}", configfilepath)); }
+				Err(_) => { return Err(format!("Error creating config file: {}", configpath)); }
 			}
 		}
 	};
@@ -125,16 +155,24 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 		if line.chars().nth(0).unwrap() == '[' && line.chars().last().unwrap() == ']' {
             let newmodule = line[1..line.len()-1].to_string();
 
-            if newmodule == "general".to_string() {
-                foundgeneral = true;
-            }
-
 			currmodule = newmodule;
 			
 			output.push(ConfigModule {
 				name: currmodule.clone(),
 				settings: Vec::new()
 			});
+
+            if currmodule == "general".to_string() {
+                foundgeneral = true;
+
+                match getconfigfilemtime() {
+                    Ok(val) => output.last_mut().unwrap().settings.push(ConfigKeyValue {
+                        key: "configmtime".to_string(),
+                        value: val
+                    }),
+                    _ => {}
+                }
+            }
 
 			continue;
 		}

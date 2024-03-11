@@ -17,11 +17,11 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
     let general = config::getmodule(&config, "general").unwrap();
 
-    let defaults: Vec<String> = vec![" ".to_string(), " ".to_string(), "  ".to_string()];
+    let defaults: Vec<&'static str> = vec![" ", " ", "  "];
 
-    let leftpad = config::getkeyvaluedefault(&general, "leftpad", &defaults[0]);
-    let rightpad = config::getkeyvaluedefault(&general, "rightpad", &defaults[1]);
-    let delim = config::getkeyvaluedefault(&general, "delim", &defaults[2]);
+    let leftpad = config::getkeyvaluedefault(&general, "leftpad", defaults[0]);
+    let rightpad = config::getkeyvaluedefault(&general, "rightpad", defaults[1]);
+    let delim = config::getkeyvaluedefault(&general, "delim", defaults[2]);
 
     let maxdelay: Duration = match config::getkeyvalueas(&general, "maxinterval") as Option<u64> {
         Some(val) => Duration::from_millis(val),
@@ -39,11 +39,22 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
 
     let mut signals = Signals::new(signalids).unwrap();
 
-    // TODO - listen for config file changes and reload
+    let oldconfigmtime = config::getkeyvaluedefault(&general, "configmtime", "");
 
     // TODO - make the debug messages available from a commandline flag
 
     loop {
+        // Check if the config file has been modified
+        
+        if oldconfigmtime.len() > 0 {
+            match config::getconfigfilemtime() {
+                Ok(val) => if val != oldconfigmtime {
+                    return;
+                },
+                _ => {}
+            }
+        }
+
         // Run each scheduled module
 
         for signal in signals.pending() {
