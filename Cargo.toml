@@ -12,4 +12,5 @@ pulsectl-rs = "0.3.2"
 networkmanager = "0.4.1"
 dbus = "0.9.7"
 libc = "0.2.153"
+signal-hook = "0.3.17"
 

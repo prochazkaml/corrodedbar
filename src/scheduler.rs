@@ -2,9 +2,11 @@ use crate::config;
 use crate::modules;
 use crate::wm;
 use std::time::{Duration, Instant};
+use signal_hook::iterator::Signals;
 
 pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRuntime>) {
     let mut counters: Vec<Duration> = Vec::new();
+    let mut interrupts: Vec<bool> = vec![false; modules.len()];
     let mut strings: Vec<Option<String>> = vec![None; modules.len()];
     
     for module in modules {
@@ -21,17 +23,46 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
     let rightpad = config::getkeyvaluedefault(&general, "rightpad", &defaults[1]);
     let delim = config::getkeyvaluedefault(&general, "delim", &defaults[2]);
 
-    // TODO - signals
+    let maxdelay: Duration = match config::getkeyvalueas(&general, "maxinterval") as Option<u64> {
+        Some(val) => Duration::from_millis(val),
+        None => Duration::MAX
+    };
+
+    let mut signalids: Vec<i32> = Vec::new();
+
+    for i in 0..modules.len() {
+        match modules[i].unixsignal {
+            Some(val) => signalids.push(val as i32),
+            _ => {}
+        }
+    }
+
+    let mut signals = Signals::new(signalids).unwrap();
 
     // TODO - listen for config file changes and reload
+
+    // TODO - make the debug messages available from a commandline flag
 
     loop {
         // Run each scheduled module
 
+        for signal in signals.pending() {
+            for i in 0..modules.len() {
+                match modules[i].unixsignal {
+                    Some(val) => if val as i32 == signal {
+                        interrupts[i] = true;
+                    },
+                    _ => {}
+                }
+            }
+
+            //println!("Received signal {}.", signal);
+        }
+
         let mut elapsed = start.elapsed();
 
         for i in 0..modules.len() {
-            if elapsed < counters[i] { continue; }
+            if elapsed < counters[i] && !interrupts[i] { continue; }
 
             //println!("Running module {}.", modules[i].module.name);
 
@@ -43,7 +74,11 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
                 }
             };
 
-            counters[i] += modules[i].interval;
+            if interrupts[i] {
+                interrupts[i] = false;
+            } else {
+                counters[i] += modules[i].interval;
+            }
         }
 
         // Generate the output string
@@ -54,7 +89,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
             match &strings[i] {
                 Some(val) => {
                     match &modules[i].icon {
-                        Some(val) => { // TODO this is indentation hell
+                        Some(val) => {
                             output += &val;
                             output += " ";
                         },
@@ -89,9 +124,13 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
         elapsed = start.elapsed();
 
         if leastsleep > elapsed {
-            let sleep = leastsleep - elapsed;
+            let mut sleep = leastsleep - elapsed;
 
-            //println!("Going to sleep for {:?}.", sleep);
+            if sleep > maxdelay {
+                sleep = maxdelay;
+            }
+
+            // println!("Going to sleep for {:?}.", sleep);
 
             std::thread::sleep(sleep);
         }
