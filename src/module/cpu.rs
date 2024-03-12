@@ -77,10 +77,10 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     subdata.push(modules::ModuleData::TypeString(utils::readstring("/proc/cpuinfo".to_string())?));
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('t', gettemp),
-        fmtopt!('F', gethighestfreq),
-        fmtopt!('f', getlowestfreq),
-        // fmtopt!('p', getprocess), // TODO
+        fmtopt!('t', String gettemp),
+        fmtopt!('F', String gethighestfreq),
+        fmtopt!('f', String getlowestfreq),
+        // fmtopt!('p', String getprocess), // TODO
     ];
 
     utils::format(fmt, opts, &subdata, _ts)

@@ -104,10 +104,10 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     // TODO - display as percentage **or** specific units
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('p', getusedphysical),
-        fmtopt!('P', getfreephysical),
-        fmtopt!('s', getusedswap),
-        fmtopt!('S', getfreeswap),
+        fmtopt!('p', String getusedphysical),
+        fmtopt!('P', String getfreephysical),
+        fmtopt!('s', String getusedswap),
+        fmtopt!('S', String getfreeswap),
     ];
 
     utils::format(fmt, opts, &subdata, _ts)

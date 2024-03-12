@@ -1,27 +1,132 @@
 use crate::modules;
 use crate::utils;
 
+type FmtGenStringFn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<String>, String>;
+type FmtGenString = FmtGenStringFn;
+
+type FmtGenFloat64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration, Option<&String>) -> Result<Option<f64>, String>;
+pub struct FmtGenFloat64 {
+    pub fun: FmtGenFloat64Fn,
+    pub defaultfmt: Option<String>
+}
+
+type FmtGenInt64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration, Option<&String>) -> Result<Option<f64>, String>;
+pub struct FmtGenInt64 {
+    pub fun: FmtGenInt64Fn,
+    pub defaultfmt: Option<String>
+}
+
+pub enum FormatGenerator {
+    OutputString(FmtGenString),
+    OutputFloat64(FmtGenFloat64),
+    OutputInt64(FmtGenInt64)
+}
+
 pub struct FormatOption {
     pub id: char,
-    pub generate: fn(&Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String>
+    pub generate: FormatGenerator
 }
 
 #[macro_export]
 macro_rules! fmtopt {
-	($char:literal, $fnname:ident) => {
+	($char:literal, String $fnname:ident) => {
 		utils::FormatOption {
 			id: $char,
-            generate: $fnname
+            generate: utils::FormatGenerator::OutputString($fnname)
 		}
-	}
+	};
+	($char:literal, f64 $fnname:ident) => {
+		utils::FormatOption {
+			id: $char,
+            generate: utils::FormatGenerator::OutputFloat64(utils::FmtGenFloat64 {
+                fun: $fnname,
+                defaultfmt: None
+            })
+		}
+	};
+	($char:literal, f64 $fnname:ident, $defaultfmt:literal) => {
+		utils::FormatOption {
+			id: $char,
+            generate: utils::FormatGenerator::OutputFloat64(utils::FmtGenFloat64 {
+                fun: $fnname,
+                defaulttype: None,
+                defaultfmt: Some($defaultfmt.to_string())
+            })
+		}
+	};
 }
 
-fn callformatfn(c: char, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<String, String> {
+fn callformatfnstr(fun: &FmtGenString, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+    /*
+     * String format syntax: `%T`
+     *   T = token
+     */
+
+    match fun(data, ts)? {
+        Some(val) => return Ok(val),
+        None => return Ok("".to_string())
+    }
+}
+
+fn callformatfnf64(fun: &FmtGenFloat64, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+    /*
+     * Float format syntax: `%T[dD pP zZ]`
+     *   T = token
+     *   D = divisor, 1 to disable (duh)
+     *       1 by default
+     *   P = number of output decimal places
+     *       0 by default
+     *   Z = minimum number of digits before the decimal point (zero-pad)
+     *       0 by default
+     *
+     *   result = fnoutput / D; rounded to P decimal places, zero-padded to Z digits
+     */
+
+    let result: f64 = match (fun.fun)(data, ts, None)? {
+        Some(val) => val,
+        None => return Ok("".to_string())
+    };
+
+    // TODO
+
+    //println!("{} {}", result, fun.defaultfmt);
+
+    Ok("".to_string())
+}
+
+fn callformatfni64(fun: &FmtGenInt64, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+    /*
+     * Float format syntax: `%T[dD rR zZ]`
+     *   T = token
+     *   D = divisor, 1 to disable (duh)
+     *       1 by default
+     *   R = divisor for remainder calculation, 0 to disable
+     *       0 by default
+     *   Z = minimum number of digits before the decimal point (zero-pad)
+     *       0 by default
+     *
+     *   result = (fnoutput / D) % R; zero-padded to Z digits
+     */
+
+    let result: f64 = match (fun.fun)(data, ts, None)? {
+        Some(val) => val,
+        None => return Ok("".to_string())
+    };
+
+    // TODO
+
+    //println!("{} {}", result, fun.defaultfmt);
+
+    Ok("".to_string())
+}
+
+fn callformatfn(c: char, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
     for opt in fmtopts {
         if opt.id == c {
-            match (opt.generate)(data, _ts)? {
-                Some(val) => return Ok(val),
-                None => return Ok("".to_string())
+            match &opt.generate {
+                FormatGenerator::OutputString(fun) => return callformatfnstr(&fun, data, ts),
+                FormatGenerator::OutputFloat64(fun) => return callformatfnf64(&fun, data, ts),
+                FormatGenerator::OutputInt64(fun) => return callformatfni64(&fun, data, ts)
             }
         }
     }
@@ -104,6 +209,10 @@ macro_rules! genuptimefun {
 	}
 }
 
+fn testfloat64(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration, _type: Option<&String>) -> Result<Option<f64>, String> {
+    Ok(Some(0.0 as f64))
+}
+
 genuptimefun!(getday, false, 86400000, 0, 0);
 genuptimefun!(gethour, false, 3600000, 0, 0);
 genuptimefun!(gethourcapped, true, 3600000, 60, 2);
@@ -119,15 +228,16 @@ pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> 
     data.push(modules::ModuleData::TypeFloat64(dur));
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('d', getday),
-        fmtopt!('H', gethourcapped),
-        fmtopt!('h', gethour),
-        fmtopt!('M', getminutecapped),
-        fmtopt!('m', getminute),
-        fmtopt!('S', getsecondcapped),
-        fmtopt!('s', getsecond),
-        fmtopt!('L', getmilliscapped),
-        fmtopt!('l', getmillis)
+        fmtopt!('a', f64 testfloat64),
+        fmtopt!('d', String getday),
+        fmtopt!('H', String gethourcapped),
+        fmtopt!('h', String gethour),
+        fmtopt!('M', String getminutecapped),
+        fmtopt!('m', String getminute),
+        fmtopt!('S', String getsecondcapped),
+        fmtopt!('s', String getsecond),
+        fmtopt!('L', String getmilliscapped),
+        fmtopt!('l', String getmillis)
     ];
 
     format(&fmt, opts, &data, std::time::Duration::MAX)

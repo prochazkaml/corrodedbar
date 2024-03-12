@@ -17,7 +17,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
     
     configmandatory!("_device", TypeString, data, config);
     configoptional!("_format", TypeString, "%i %p%% (%w W %e)", data, config);
-    configoptional!("_esttimeformat", TypeString, "%h:%M", data, config);
+    configoptional!("_esttimeformat", TypeString, "%h:%M %a", data, config);
 
 	Ok(data)
 }
@@ -86,10 +86,10 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     getdata!(fmt, FORMAT, TypeString, data);
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('i', geticon),
-        fmtopt!('p', getpercentage),
-        fmtopt!('w', getpower),
-        fmtopt!('e', getestimate)
+        fmtopt!('i', String geticon),
+        fmtopt!('p', String getpercentage),
+        fmtopt!('w', String getpower),
+        fmtopt!('e', String getestimate)
     ];
 
     utils::format(fmt, opts, data, _ts)
