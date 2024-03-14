@@ -95,10 +95,6 @@ struct FormatOptionParam {
     pub val: FormatOptionParamVal
 }
 
-fn internalerrormsg() -> Result<String, String> {
-    Err("Internal error".to_string())
-}
-
 fn callformatfnstr(fun: &FmtGenString, _iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
     /*
      * String format syntax: `%T`
@@ -213,15 +209,15 @@ fn callformatfnf64(fun: &FmtGenFloat64, iter: &mut CharIterator, data: &Vec<modu
     parsefmtoptparams(opts, iter);
 
     let FormatOptionParamVal::TypeFloat64(divisor) = opts[0].val else {
-        return internalerrormsg();
+        return Err(modules::internalerrormsg());
     };
 
     let FormatOptionParamVal::TypeUsize(decimals) = opts[1].val else {
-        return internalerrormsg();
+        return Err(modules::internalerrormsg());
     };
 
     let FormatOptionParamVal::TypeUsize(zeropad) = opts[2].val else {
-        return internalerrormsg();
+        return Err(modules::internalerrormsg());
     };
 
     result /= divisor;
@@ -273,15 +269,15 @@ fn callformatfni64(fun: &FmtGenInt64, iter: &mut CharIterator, data: &Vec<module
     parsefmtoptparams(opts, iter);
 
     let FormatOptionParamVal::TypeInt64(divisor) = opts[0].val else {
-        return internalerrormsg();
+        return Err(modules::internalerrormsg());
     };
 
     let FormatOptionParamVal::TypeInt64(moddivisor) = opts[1].val else {
-        return internalerrormsg();
+        return Err(modules::internalerrormsg());
     };
 
     let FormatOptionParamVal::TypeUsize(zeropad) = opts[2].val else {
-        return internalerrormsg();
+        return Err(modules::internalerrormsg());
     };
 
     result /= divisor;
