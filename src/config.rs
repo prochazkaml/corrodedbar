@@ -75,18 +75,20 @@ fn getgeneralconfigpath() -> Option<String> {
 
 fn getconfigpath() -> Option<String> {
 	match getgeneralconfigpath() {
-		Some(path) => Some(path + "/corrodedbar/main.conf"),
+		Some(path) => Some(path + "/corrodedbar"),
 		None => None
 	}
 }
 
 pub fn getconfigfilemtime() -> Result<String, String> {
-	let configpath = match getconfigpath() {
+	let configdirpath = match getconfigpath() {
 		Some(path) => path,
 		None => {
 			return Err("Could not determine the config directory. Make sure $HOME is set.".to_string());
 		}
 	};
+
+    let configpath = configdirpath + "/main.conf";
 
     let metadata = match std::fs::metadata(configpath) {
         Ok(val) => val,
@@ -113,19 +115,21 @@ pub fn getconfigfilemtime() -> Result<String, String> {
 }
 
 pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
-	let configpath = match getconfigpath() {
+	let configdirpath = match getconfigpath() {
 		Some(path) => path,
 		None => {
 			return Err("Could not determine the config directory. Make sure $HOME is set.".to_string());
 		}
 	};
 
+    let configpath = configdirpath.clone() + "/main.conf";
+
 	let configcontents = match std::fs::read_to_string(configpath.clone()) {
 		Ok(value) => value,
 		Err(_) => {
-			match std::fs::create_dir_all(configpath.clone()) {
+			match std::fs::create_dir_all(configdirpath.clone()) {
 				Ok(_) => {},
-				Err(_) => { return Err(format!("Error creating path: {}", configpath)); }
+				Err(_) => { return Err(format!("Error creating path: {}", configdirpath)); }
 			}
 
 			let exampleconf = include_str!("example.conf");
