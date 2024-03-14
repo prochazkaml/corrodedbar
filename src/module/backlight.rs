@@ -16,6 +16,8 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
     configmandatory!("_device", TypeString, data, config);
     configoptional!("_showraw", TypeBool, false, data, config);
 
+    // TODO - format this (perhaps also show the maximum value?)
+
 	Ok(data)
 }
 

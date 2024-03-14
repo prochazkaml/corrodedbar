@@ -17,7 +17,7 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
     
     configmandatory!("_device", TypeString, data, config);
     configoptional!("_format", TypeString, "%i %p%% (%w W %e)", data, config);
-    configoptional!("_esttimeformat", TypeString, "%h:%M %a", data, config);
+    configoptional!("_esttimeformat", TypeString, "%h:%M", data, config);
 
 	Ok(data)
 }

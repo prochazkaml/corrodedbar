@@ -1,16 +1,18 @@
 use crate::modules;
 use crate::utils;
 
+type CharIterator<'a> = std::iter::Peekable<std::str::Chars<'a>>;
+
 type FmtGenStringFn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<String>, String>;
 type FmtGenString = FmtGenStringFn;
 
-type FmtGenFloat64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration, Option<&String>) -> Result<Option<f64>, String>;
+type FmtGenFloat64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<f64>, String>;
 pub struct FmtGenFloat64 {
     pub fun: FmtGenFloat64Fn,
     pub defaultfmt: Option<String>
 }
 
-type FmtGenInt64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration, Option<&String>) -> Result<Option<f64>, String>;
+type FmtGenInt64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<i64>, String>;
 pub struct FmtGenInt64 {
     pub fun: FmtGenInt64Fn,
     pub defaultfmt: Option<String>
@@ -49,14 +51,55 @@ macro_rules! fmtopt {
 			id: $char,
             generate: utils::FormatGenerator::OutputFloat64(utils::FmtGenFloat64 {
                 fun: $fnname,
-                defaulttype: None,
+                defaultfmt: Some($defaultfmt.to_string())
+            })
+		}
+	};
+	($char:literal, i64 $fnname:ident) => {
+		utils::FormatOption {
+			id: $char,
+            generate: utils::FormatGenerator::OutputInt64(utils::FmtGenInt64 {
+                fun: $fnname,
+                defaultfmt: None
+            })
+		}
+	};
+	($char:literal, i64 $fnname:ident, $defaultfmt:literal) => {
+		utils::FormatOption {
+			id: $char,
+            generate: utils::FormatGenerator::OutputInt64(utils::FmtGenInt64 {
+                fun: $fnname,
                 defaultfmt: Some($defaultfmt.to_string())
             })
 		}
 	};
 }
 
-fn callformatfnstr(fun: &FmtGenString, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+macro_rules! fmtoptparam {
+	($char:literal, $type:ident, $defaultval:literal) => {
+		utils::FormatOptionParam {
+			id: $char,
+            val: FormatOptionParamVal::$type($defaultval)
+		}
+	};
+}
+
+enum FormatOptionParamVal {
+    TypeFloat64(f64),
+    TypeInt64(i64),
+    TypeUsize(usize)
+}
+
+struct FormatOptionParam {
+    pub id: char,
+    pub val: FormatOptionParamVal
+}
+
+fn internalerrormsg() -> Result<String, String> {
+    Err("Internal error".to_string())
+}
+
+fn callformatfnstr(fun: &FmtGenString, _iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
     /*
      * String format syntax: `%T`
      *   T = token
@@ -68,7 +111,76 @@ fn callformatfnstr(fun: &FmtGenString, data: &Vec<modules::ModuleData>, ts: std:
     }
 }
 
-fn callformatfnf64(fun: &FmtGenFloat64, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+macro_rules! handlefmtopt {
+    ($enumtype:ident is $type:ty, $dest:ident[$idx:ident] = $src:ident) => {
+        match $src.parse::<$type>() {
+            Ok(val) => { $dest[$idx].val = FormatOptionParamVal::$enumtype(val); },
+            Err(_) => {}
+        }
+    }
+}
+
+fn setfmtoptparam(opts: &mut [FormatOptionParam], tagstr: &String) {
+    let mut tagchars = tagstr.chars();
+
+    let tag = tagchars.next().unwrap(); // We're sure that tagstr will be at least 1 char
+    let contents = tagchars.as_str();
+
+    for i in 0..opts.len() {
+        if opts[i].id == tag {
+            match opts[i].val {
+                FormatOptionParamVal::TypeFloat64(_) => handlefmtopt!(TypeFloat64 is f64, opts[i] = contents),
+                FormatOptionParamVal::TypeUsize(_) => handlefmtopt!(TypeUsize is usize, opts[i] = contents),
+                FormatOptionParamVal::TypeInt64(_) => handlefmtopt!(TypeInt64 is i64, opts[i] = contents)
+            }
+        }
+    }
+}
+
+fn parsefmtoptparams(opts: &mut [FormatOptionParam], iter: &mut CharIterator) {
+    match iter.peek() {
+        Some(val) => if *val != '[' {
+            return;
+        },
+        None => return
+    }
+
+    iter.next();
+
+    let mut currtag = String::new();
+    let mut c: char;
+    let mut shouldexit = false;
+
+    loop {
+        c = match iter.next() {
+            Some(val) => {
+                if val == ']' {
+                    shouldexit = true;
+                    ' '
+                } else {
+                    val
+                }
+            },
+            None => {
+                shouldexit = true;
+                ' ' 
+            }
+        };
+
+        if c != ' ' {
+            currtag.push(c);
+        } else if currtag.len() > 0 {
+            setfmtoptparam(opts, &currtag);
+            currtag = String::new();
+        }
+
+        if shouldexit {
+            break;
+        }
+    }
+}
+
+fn callformatfnf64(fun: &FmtGenFloat64, iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
     /*
      * Float format syntax: `%T[dD pP zZ]`
      *   T = token
@@ -82,19 +194,53 @@ fn callformatfnf64(fun: &FmtGenFloat64, data: &Vec<modules::ModuleData>, ts: std
      *   result = fnoutput / D; rounded to P decimal places, zero-padded to Z digits
      */
 
-    let result: f64 = match (fun.fun)(data, ts, None)? {
+    let mut result: f64 = match (fun.fun)(data, ts)? {
         Some(val) => val,
-        None => return Ok("".to_string())
+        None => return Ok("?".to_string())
     };
 
-    // TODO
+    let opts: &mut [FormatOptionParam] = &mut [
+        fmtoptparam!('d', TypeFloat64, 1.0),
+        fmtoptparam!('p', TypeUsize, 0),
+        fmtoptparam!('z', TypeUsize, 0)
+    ];
 
-    //println!("{} {}", result, fun.defaultfmt);
+    match &fun.defaultfmt {
+        Some(fmt) => parsefmtoptparams(opts, &mut fmt.chars().peekable()),
+        None => {}
+    }
 
-    Ok("".to_string())
+    parsefmtoptparams(opts, iter);
+
+    let FormatOptionParamVal::TypeFloat64(divisor) = opts[0].val else {
+        return internalerrormsg();
+    };
+
+    let FormatOptionParamVal::TypeUsize(decimals) = opts[1].val else {
+        return internalerrormsg();
+    };
+
+    let FormatOptionParamVal::TypeUsize(zeropad) = opts[2].val else {
+        return internalerrormsg();
+    };
+
+    result /= divisor;
+
+    let resultstr = format!("{:.decimals$}", result.abs(), decimals = decimals);
+
+    let len = match resultstr.find(|c: char| !c.is_digit(10)) {
+        Some(val) => val,
+        None => resultstr.len()
+    };
+
+    Ok(if len < zeropad {
+        ("0".repeat(zeropad - len) + &resultstr).to_string()
+    } else {
+        resultstr
+    })
 }
 
-fn callformatfni64(fun: &FmtGenInt64, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+fn callformatfni64(fun: &FmtGenInt64, iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
     /*
      * Float format syntax: `%T[dD rR zZ]`
      *   T = token
@@ -108,25 +254,74 @@ fn callformatfni64(fun: &FmtGenInt64, data: &Vec<modules::ModuleData>, ts: std::
      *   result = (fnoutput / D) % R; zero-padded to Z digits
      */
 
-    let result: f64 = match (fun.fun)(data, ts, None)? {
+    let mut result: i64 = match (fun.fun)(data, ts)? {
         Some(val) => val,
-        None => return Ok("".to_string())
+        None => return Ok("?".to_string())
     };
 
-    // TODO
+    let opts: &mut [FormatOptionParam] = &mut [
+        fmtoptparam!('d', TypeInt64, 1),
+        fmtoptparam!('r', TypeInt64, 0),
+        fmtoptparam!('z', TypeUsize, 0)
+    ];
 
-    //println!("{} {}", result, fun.defaultfmt);
+    match &fun.defaultfmt {
+        Some(fmt) => parsefmtoptparams(opts, &mut fmt.chars().peekable()),
+        None => {}
+    }
 
-    Ok("".to_string())
+    parsefmtoptparams(opts, iter);
+
+    let FormatOptionParamVal::TypeInt64(divisor) = opts[0].val else {
+        return internalerrormsg();
+    };
+
+    let FormatOptionParamVal::TypeInt64(moddivisor) = opts[1].val else {
+        return internalerrormsg();
+    };
+
+    let FormatOptionParamVal::TypeUsize(zeropad) = opts[2].val else {
+        return internalerrormsg();
+    };
+
+    result /= divisor;
+
+    if moddivisor != 0 {
+        result %= moddivisor;
+    }
+
+    let resultstr = format!("{}", result);
+
+    let len = match resultstr.find(|c: char| !c.is_digit(10)) {
+        Some(val) => val,
+        None => resultstr.len()
+    };
+
+    Ok(if len < zeropad {
+        ("0".repeat(zeropad - len) + &resultstr).to_string()
+    } else {
+        resultstr
+    })
 }
 
-fn callformatfn(c: char, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+fn callformatfn(iter: &mut CharIterator, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+    let default = "%".to_string();
+
+    let c = match iter.next() {
+        Some(c) => c,
+        None => return Ok(default)
+    };
+
+    if c == '%' {
+        return Ok(default);
+    }
+
     for opt in fmtopts {
         if opt.id == c {
             match &opt.generate {
-                FormatGenerator::OutputString(fun) => return callformatfnstr(&fun, data, ts),
-                FormatGenerator::OutputFloat64(fun) => return callformatfnf64(&fun, data, ts),
-                FormatGenerator::OutputInt64(fun) => return callformatfni64(&fun, data, ts)
+                FormatGenerator::OutputString(fun) => return callformatfnstr(&fun, iter, data, ts),
+                FormatGenerator::OutputFloat64(fun) => return callformatfnf64(&fun, iter, data, ts),
+                FormatGenerator::OutputInt64(fun) => return callformatfni64(&fun, iter, data, ts)
             }
         }
     }
@@ -134,30 +329,24 @@ fn callformatfn(c: char, fmtopts: &[FormatOption], data: &Vec<modules::ModuleDat
     Ok(format!("%{}", c))
 }
 
-pub fn format(fmt: &String, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+pub fn format(fmt: &String, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<Option<String>, String> {
     let mut out = String::new();
     
-    // TODO - custom number formats?
+    let mut iter = fmt.chars().peekable();
 
-    let mut controlchar = false;
+    loop {
+        let c: char = match iter.next() {
+            Some(c) => c,
+            None => break
+        };
 
-    for c in fmt.chars() { match controlchar {
-        false => { 
-            if c == '%' {
-                controlchar = true;
-            } else {
-                out.push(c);
-            }
-        },
-        true => {
-            match c {
-                '%' => out.push('%'),
-                _ => out += &callformatfn(c, fmtopts, data, _ts)?
-            };
-
-            controlchar = false;
+        if c == '%' {
+            out += &callformatfn(&mut iter, fmtopts, data, ts)?;
+            continue;
         }
-    }}
+
+        out.push(c);
+    }
 
     return Ok(Some(out));
 }
@@ -191,53 +380,30 @@ pub fn readlineas<T>(path: String) -> Result<T, String>
     }
 }
 
-macro_rules! genuptimefun {
-	($fnname:ident, $cap: literal, $div:literal, $mod:literal, $decimals:literal) => {
-        pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-            let modules::ModuleData::TypeFloat64(time) = &data[0] else {
-                return modules::init_error_msg();
-            };
+fn parsetime(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<i64>, String> {
+    let modules::ModuleData::TypeFloat64(time) = &data[0] else {
+        return Err(modules::internalerrormsg());
+    };
 
-            let timeint = (time * 1000.0) as u64;
+    let timeint = (time * 1000.0) as i64;
 
-            Ok(Some(if $cap {
-                format!(concat!("{:0>", $decimals, "}"), timeint / $div % $mod)
-            } else {
-                format!("{}", timeint / $div)
-            }))
-        }
-	}
+    Ok(Some(timeint))
 }
-
-fn testfloat64(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration, _type: Option<&String>) -> Result<Option<f64>, String> {
-    Ok(Some(0.0 as f64))
-}
-
-genuptimefun!(getday, false, 86400000, 0, 0);
-genuptimefun!(gethour, false, 3600000, 0, 0);
-genuptimefun!(gethourcapped, true, 3600000, 60, 2);
-genuptimefun!(getminute, false, 60000, 0, 0);
-genuptimefun!(getminutecapped, true, 60000, 60, 2);
-genuptimefun!(getsecond, false, 1000, 0, 0);
-genuptimefun!(getsecondcapped, true, 1000, 60, 2);
-genuptimefun!(getmillis, false, 1, 0, 0);
-genuptimefun!(getmilliscapped, true, 1, 1000, 3);
 
 pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> {
     let mut data: Vec<modules::ModuleData> = Vec::new();
     data.push(modules::ModuleData::TypeFloat64(dur));
 
-    let opts: &[utils::FormatOption] = &[
-        fmtopt!('a', f64 testfloat64),
-        fmtopt!('d', String getday),
-        fmtopt!('H', String gethourcapped),
-        fmtopt!('h', String gethour),
-        fmtopt!('M', String getminutecapped),
-        fmtopt!('m', String getminute),
-        fmtopt!('S', String getsecondcapped),
-        fmtopt!('s', String getsecond),
-        fmtopt!('L', String getmilliscapped),
-        fmtopt!('l', String getmillis)
+    let opts: &[FormatOption] = &[
+        fmtopt!('d', i64 parsetime, "[d86400000]"),
+        fmtopt!('H', i64 parsetime, "[d3600000 r60 z2]"),
+        fmtopt!('h', i64 parsetime, "[d3600000]"),
+        fmtopt!('M', i64 parsetime, "[d60000 r60 z2]"),
+        fmtopt!('m', i64 parsetime, "[d60000]"),
+        fmtopt!('S', i64 parsetime, "[d1000 r60 z2]"),
+        fmtopt!('s', i64 parsetime, "[d1000]"),
+        fmtopt!('L', i64 parsetime, "[d1 r60 z2]"),
+        fmtopt!('l', i64 parsetime, "[d1]"),
     ];
 
     format(&fmt, opts, &data, std::time::Duration::MAX)

@@ -21,15 +21,15 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 	Ok(data)
 }
 
-fn gettemp(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+fn gettemp(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
     getdata!(dev, TEMPDEVICE, TypeString, data);
 
     let currtemp: f64 = utils::readlineas(format!("{}", dev))?;
 
-    Ok(Some(format!("{:.1}", currtemp / 1000.0)))
+    Ok(Some(currtemp))
 }
 
-fn getfreq(data: &Vec<modules::ModuleData>, highest: bool) -> Result<Option<String>, String> {
+fn getfreq(data: &Vec<modules::ModuleData>, highest: bool) -> Result<Option<f64>, String> {
     getdata!(file, SUBPROCCPUINFO, TypeString, data);
 
     let lines = file.lines();
@@ -56,17 +56,17 @@ fn getfreq(data: &Vec<modules::ModuleData>, highest: bool) -> Result<Option<Stri
     }
     
     Ok(if target != default {
-        Some(format!("{:.0}", target))
+        Some(target)
     } else {
         None
     })
 }
 
-fn gethighestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+fn gethighestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
     getfreq(data, true)
 }
 
-fn getlowestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+fn getlowestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
     getfreq(data, false)
 }
 
@@ -77,9 +77,9 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     subdata.push(modules::ModuleData::TypeString(utils::readstring("/proc/cpuinfo".to_string())?));
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('t', String gettemp),
-        fmtopt!('F', String gethighestfreq),
-        fmtopt!('f', String getlowestfreq),
+        fmtopt!('t', f64 gettemp, "[d1000 p1]"),
+        fmtopt!('F', f64 gethighestfreq),
+        fmtopt!('f', f64 getlowestfreq),
         // fmtopt!('p', String getprocess), // TODO
     ];
 

@@ -28,7 +28,7 @@ macro_rules! configoptional {
 macro_rules! getdata {
     ($to:ident, $idx:ident, $type:ident, $from:ident) => {
         let modules::ModuleData::$type($to) = &$from[Data::$idx as usize] else {
-            return modules::init_error_msg();
+            return Err(modules::internalerrormsg());
         };
     }
 }
@@ -152,7 +152,7 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 	return Ok(loadedmodules);
 }
 
-pub fn init_error_msg() -> Result<Option<String>, String> {
-    return Err("Error during init".to_string());
+pub fn internalerrormsg() -> String {
+    return "Internal error".to_string();
 }
 

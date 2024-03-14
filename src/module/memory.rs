@@ -23,19 +23,19 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 
 macro_rules! genmemoryfun {
 	($fnname:ident, $calculateused: literal, $freefield:ident, $totalfield:ident) => {
-        pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-            getdata!(total, $totalfield, TypeInt64, data);
-            getdata!(free, $freefield, TypeInt64, data);
+        pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
+            getdata!(total, $totalfield, TypeFloat64, data);
+            getdata!(free, $freefield, TypeFloat64, data);
 
-            Ok(Some(if *free >= 0 && *total > 0 {
+            if *free >= 0.0 && *total > 0.0 {
                 if $calculateused {
-                    format!("{}", (total - free) * 100 / total)
+                    Ok(Some((total - free) * 100.0 / total))
                 } else {
-                    format!("{}", free * 100 / total)
+                    Ok(Some(free * 100.0 / total))
                 }
             } else {
-                "??".to_string()
-            }))
+                Ok(None)
+            }
         }
 	}
 }
@@ -55,11 +55,11 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
 
     let lines = file.lines();
 
-    let mut total: i64 = -1;
-    let mut free: i64 = -1;
+    let mut total: f64 = -1.0;
+    let mut free: f64 = -1.0;
 
-    let mut swaptotal: i64 = -1;
-    let mut swapfree: i64 = -1;
+    let mut swaptotal: f64 = -1.0;
+    let mut swapfree: f64 = -1.0;
 
     for line in lines {
         let split: Vec<&str> = line.split_whitespace().collect();
@@ -67,28 +67,28 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
         if split.len() != 3 { continue; }
 
         if split[0] == "MemTotal:" {
-            total = match split[1].parse::<i64>() {
+            total = match split[1].parse::<f64>() {
                 Ok(val) => val,
                 Err(_) => { return Err("Format error".to_string()); }
             }
         }
 
         if split[0] == "MemAvailable:" {
-            free = match split[1].parse::<i64>() {
+            free = match split[1].parse::<f64>() {
                 Ok(val) => val,
                 Err(_) => { return Err("Format error".to_string()); }
             }
         }
 
         if split[0] == "SwapTotal:" {
-            swaptotal = match split[1].parse::<i64>() {
+            swaptotal = match split[1].parse::<f64>() {
                 Ok(val) => val,
                 Err(_) => { return Err("Format error".to_string()); }
             }
         }
 
         if split[0] == "SwapFree:" {
-            swapfree = match split[1].parse::<i64>() {
+            swapfree = match split[1].parse::<f64>() {
                 Ok(val) => val,
                 Err(_) => { return Err("Format error".to_string()); }
             }
@@ -96,18 +96,18 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     }
 
     let mut subdata = data.clone();
-    subdata.push(modules::ModuleData::TypeInt64(total));
-    subdata.push(modules::ModuleData::TypeInt64(free));
-    subdata.push(modules::ModuleData::TypeInt64(swaptotal));
-    subdata.push(modules::ModuleData::TypeInt64(swapfree));
+    subdata.push(modules::ModuleData::TypeFloat64(total));
+    subdata.push(modules::ModuleData::TypeFloat64(free));
+    subdata.push(modules::ModuleData::TypeFloat64(swaptotal));
+    subdata.push(modules::ModuleData::TypeFloat64(swapfree));
 
     // TODO - display as percentage **or** specific units
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('p', String getusedphysical),
-        fmtopt!('P', String getfreephysical),
-        fmtopt!('s', String getusedswap),
-        fmtopt!('S', String getfreeswap),
+        fmtopt!('p', f64 getusedphysical),
+        fmtopt!('P', f64 getfreephysical),
+        fmtopt!('s', f64 getusedswap),
+        fmtopt!('S', f64 getfreeswap),
     ];
 
     utils::format(fmt, opts, &subdata, _ts)
