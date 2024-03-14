@@ -21,29 +21,45 @@ pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleD
 	Ok(data)
 }
 
+fn getmeminfo(total: f64, free: f64, percentage: bool, calculateused: bool) -> Result<Option<f64>, String> {
+    if free >= 0.0 && total > 0.0 {
+        if calculateused {
+            if percentage {
+                Ok(Some((total - free) * 100.0 / total))
+            } else {
+                Ok(Some(total - free))
+            }
+        } else {
+            if percentage {
+                Ok(Some(free * 100.0 / total))
+            } else {
+                Ok(Some(free))
+            }
+        }
+    } else {
+        Ok(None)
+    }
+}
+
 macro_rules! genmemoryfun {
-	($fnname:ident, $calculateused: literal, $freefield:ident, $totalfield:ident) => {
+	($fnname:ident, $percentage:literal, $calculateused:literal, $freefield:ident, $totalfield:ident) => {
         pub fn $fnname(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
             getdata!(total, $totalfield, TypeFloat64, data);
             getdata!(free, $freefield, TypeFloat64, data);
 
-            if *free >= 0.0 && *total > 0.0 {
-                if $calculateused {
-                    Ok(Some((total - free) * 100.0 / total))
-                } else {
-                    Ok(Some(free * 100.0 / total))
-                }
-            } else {
-                Ok(None)
-            }
+            getmeminfo(*total, *free, $percentage, $calculateused)
         }
 	}
 }
 
-genmemoryfun!(getusedphysical, true, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
-genmemoryfun!(getfreephysical, false, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
-genmemoryfun!(getusedswap, true, SUBSWAPFREE, SUBSWAPTOTAL);
-genmemoryfun!(getfreeswap, false, SUBSWAPFREE, SUBSWAPTOTAL);
+genmemoryfun!(getusedphysical, false, true, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
+genmemoryfun!(getfreephysical, false, false, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
+genmemoryfun!(getusedswap, false, true, SUBSWAPFREE, SUBSWAPTOTAL);
+genmemoryfun!(getfreeswap, false, false, SUBSWAPFREE, SUBSWAPTOTAL);
+genmemoryfun!(getusedphysicalperc, true, true, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
+genmemoryfun!(getfreephysicalperc, true, false, SUBPHYSICALFREE, SUBPHYSICALTOTAL);
+genmemoryfun!(getusedswapperc, true, true, SUBSWAPFREE, SUBSWAPTOTAL);
+genmemoryfun!(getfreeswapperc, true, false, SUBSWAPFREE, SUBSWAPTOTAL);
 
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     getdata!(fmt, FORMAT, TypeString, data);
@@ -101,13 +117,15 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     subdata.push(modules::ModuleData::TypeFloat64(swaptotal));
     subdata.push(modules::ModuleData::TypeFloat64(swapfree));
 
-    // TODO - display as percentage **or** specific units
-
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('p', f64 getusedphysical),
-        fmtopt!('P', f64 getfreephysical),
-        fmtopt!('s', f64 getusedswap),
-        fmtopt!('S', f64 getfreeswap),
+        fmtopt!('p', f64 getusedphysicalperc),
+        fmtopt!('P', f64 getfreephysicalperc),
+        fmtopt!('s', f64 getusedswapperc),
+        fmtopt!('S', f64 getfreeswapperc),
+        fmtopt!('h', f64 getusedphysical),
+        fmtopt!('H', f64 getfreephysical),
+        fmtopt!('w', f64 getusedswap),
+        fmtopt!('W', f64 getfreeswap),
     ];
 
     utils::format(fmt, opts, &subdata, _ts)
