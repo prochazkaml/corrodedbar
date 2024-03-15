@@ -25,13 +25,13 @@ fn getmeminfo(total: f64, free: f64, percentage: bool, calculateused: bool) -> R
     if free >= 0.0 && total > 0.0 {
         if calculateused {
             if percentage {
-                Ok(Some((total - free) * 100.0 / total))
+                Ok(Some((total - free) / total))
             } else {
                 Ok(Some(total - free))
             }
         } else {
             if percentage {
-                Ok(Some(free * 100.0 / total))
+                Ok(Some(free / total))
             } else {
                 Ok(Some(free))
             }
@@ -118,10 +118,10 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     subdata.push(modules::ModuleData::TypeFloat64(swapfree));
 
     let opts: &[utils::FormatOption] = &[
-        fmtopt!('p', f64 getusedphysicalperc),
-        fmtopt!('P', f64 getfreephysicalperc),
-        fmtopt!('s', f64 getusedswapperc),
-        fmtopt!('S', f64 getfreeswapperc),
+        fmtopt!('p', f64 getusedphysicalperc, "[d.01]"),
+        fmtopt!('P', f64 getfreephysicalperc, "[d.01]"),
+        fmtopt!('s', f64 getusedswapperc, "[d.01]"),
+        fmtopt!('S', f64 getfreeswapperc, "[d.01]"),
         fmtopt!('h', f64 getusedphysical),
         fmtopt!('H', f64 getfreephysical),
         fmtopt!('w', f64 getusedswap),
