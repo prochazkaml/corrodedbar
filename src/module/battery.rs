@@ -39,18 +39,20 @@ fn geticon(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     }.to_string()))
 }
 
-fn getpercentage(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+fn getpercentage(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
     getdata!(dev, DEVICE, TypeString, data);
-    
-    Ok(Some(utils::readline(format!("/sys/class/power_supply/{}/capacity", dev))?))
+
+    let perc: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/capacity", dev))?;
+
+    Ok(Some(perc / 100.0))
 }
 
-fn getpower(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
+fn getpower(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
     getdata!(dev, DEVICE, TypeString, data);
 
     let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", dev))?;
 
-    Ok(Some(format!("{:.1}", power / 1000000.0)))
+    Ok(Some(power / 1000000.0))
 }
 
 fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
@@ -87,8 +89,8 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
 
     let opts: &[utils::FormatOption] = &[
         fmtopt!('i', String geticon),
-        fmtopt!('p', String getpercentage),
-        fmtopt!('w', String getpower),
+        fmtopt!('p', f64 getpercentage, "[d.01]"),
+        fmtopt!('w', f64 getpower, "[p1]"),
         fmtopt!('e', String getestimate)
     ];
 
