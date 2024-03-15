@@ -1,6 +1,6 @@
 use crate::config;
 use crate::modules;
-use crate::utils;
+use crate::formatter;
 use crate::fmtopt;
 use crate::getdata;
 use crate::configoptional;
@@ -117,7 +117,7 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     subdata.push(modules::ModuleData::TypeFloat64(swaptotal));
     subdata.push(modules::ModuleData::TypeFloat64(swapfree));
 
-    let opts: &[utils::FormatOption] = &[
+    let opts: &[formatter::FormatOption] = &[
         fmtopt!('p', f64 getusedphysicalperc, "[d.01]"),
         fmtopt!('P', f64 getfreephysicalperc, "[d.01]"),
         fmtopt!('s', f64 getusedswapperc, "[d.01]"),
@@ -128,6 +128,6 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
         fmtopt!('W', f64 getfreeswap),
     ];
 
-    utils::format(fmt, opts, &subdata, _ts)
+    formatter::format(fmt, opts, &subdata, _ts)
 }
 

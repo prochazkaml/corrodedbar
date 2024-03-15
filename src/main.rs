@@ -5,6 +5,7 @@ mod scheduler;
 mod wm;
 mod utils;
 mod args;
+mod formatter;
 
 fn run(params: &args::AppParams) -> bool {
 	// Load the config file

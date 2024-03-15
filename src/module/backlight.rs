@@ -1,6 +1,7 @@
 use crate::config;
 use crate::modules;
 use crate::utils;
+use crate::formatter;
 use crate::fmtopt;
 use crate::getdata;
 use crate::configmandatory;
@@ -48,12 +49,12 @@ fn getvalueperc(data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Res
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     getdata!(fmt, FORMAT, TypeString, data);
 
-    let opts: &[utils::FormatOption] = &[
+    let opts: &[formatter::FormatOption] = &[
         fmtopt!('c', i64 getvalue),
         fmtopt!('u', f64 getvalueperc, "[d.01]"),
         fmtopt!('m', i64 getmaxvalue),
     ];
 
-    utils::format(fmt, opts, data, _ts)
+    formatter::format(fmt, opts, data, _ts)
 }
 

@@ -1,6 +1,7 @@
 use crate::config;
 use crate::modules;
 use crate::utils;
+use crate::formatter;
 use crate::fmtopt;
 use crate::getdata;
 use crate::configmandatory;
@@ -76,13 +77,13 @@ pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<
     let mut subdata = data.clone();
     subdata.push(modules::ModuleData::TypeString(utils::readstring("/proc/cpuinfo".to_string())?));
 
-    let opts: &[utils::FormatOption] = &[
+    let opts: &[formatter::FormatOption] = &[
         fmtopt!('t', f64 gettemp, "[d1000 p1]"),
         fmtopt!('F', f64 gethighestfreq),
         fmtopt!('f', f64 getlowestfreq),
         // fmtopt!('p', String getprocess), // TODO
     ];
 
-    utils::format(fmt, opts, &subdata, _ts)
+    formatter::format(fmt, opts, &subdata, _ts)
 }
 

@@ -1,6 +1,7 @@
 use crate::config;
 use crate::modules;
 use crate::utils;
+use crate::formatter;
 use crate::fmtopt;
 use crate::getdata;
 use crate::configmandatory;
@@ -87,13 +88,13 @@ fn getestimate(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Res
 pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
     getdata!(fmt, FORMAT, TypeString, data);
 
-    let opts: &[utils::FormatOption] = &[
+    let opts: &[formatter::FormatOption] = &[
         fmtopt!('i', String geticon),
         fmtopt!('p', f64 getpercentage, "[d.01]"),
         fmtopt!('w', f64 getpower, "[p1]"),
         fmtopt!('e', String getestimate)
     ];
 
-    utils::format(fmt, opts, data, _ts)
+    formatter::format(fmt, opts, data, _ts)
 }
 
