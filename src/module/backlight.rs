@@ -7,31 +7,33 @@ use crate::configmandatory;
 use crate::configoptional;
 
 enum Data {
-    DEVICE,
+    DEVICECURR,
+    DEVICEMAX,
     FORMAT
 }
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
 	let mut data: Vec<modules::ModuleData> = Vec::new();
 
-    configmandatory!("_device", TypeString, data, config);
+    configmandatory!("_devicecurr", TypeString, data, config);
+    configmandatory!("_devicemax", TypeString, data, config);
     configoptional!("_format", TypeString, "%u%%", data, config);
 
 	Ok(data)
 }
 
 fn getvalue(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<i64>, String> {
-    getdata!(dev, DEVICE, TypeString, data);
+    getdata!(dev, DEVICECURR, TypeString, data);
 
-    let curr: i64 = utils::readlineas(format!("/sys/class/backlight/{}/brightness", dev))?;
+    let curr: i64 = utils::readlineas(dev.to_string())?;
 
     Ok(Some(curr))
 }
 
 fn getmaxvalue(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<i64>, String> {
-    getdata!(dev, DEVICE, TypeString, data);
+    getdata!(dev, DEVICEMAX, TypeString, data);
 
-    let max: i64 = utils::readlineas(format!("/sys/class/backlight/{}/max_brightness", dev))?;
+    let max: i64 = utils::readlineas(dev.to_string())?;
 
     Ok(Some(max))
 }
