@@ -368,8 +368,6 @@ pub fn readline(path: String) -> Result<String, String> {
 pub fn readlineas<T>(path: String) -> Result<T, String>
     where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
     
-    // TODO - custom delimiters
-
     match readline(path)?.split(' ').next().unwrap().parse::<T>() {
         Ok(val) => Ok(val),
         Err(_) => { return Err("Format error".to_string()); }
