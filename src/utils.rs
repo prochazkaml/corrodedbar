@@ -45,7 +45,7 @@ pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> 
 
     let opts: &[formatter::FormatOption] = &[
         fmtopt!('d', i64 parsetime, "[d86400000]"),
-        fmtopt!('H', i64 parsetime, "[d3600000 r60 z2]"),
+        fmtopt!('H', i64 parsetime, "[d3600000 r24 z2]"),
         fmtopt!('h', i64 parsetime, "[d3600000]"),
         fmtopt!('M', i64 parsetime, "[d60000 r60 z2]"),
         fmtopt!('m', i64 parsetime, "[d60000]"),
