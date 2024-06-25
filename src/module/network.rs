@@ -43,6 +43,10 @@ pub fn run(_data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result
                 Ok(cfg) => match cfg.addresses() { Ok(addrlist) => addrlist, Err(_) => { continue; }},
                 Err(_) => { continue; }
             },
+			Device::Ethernet(eth) => match eth.ip4_config() {
+                Ok(cfg) => match cfg.addresses() { Ok(addrlist) => addrlist, Err(_) => { continue; }},
+                Err(_) => { continue; }
+			}
             _ => { continue; } // TODO - other interfaces, IPv6
         };
 
