@@ -1,4 +1,4 @@
-// pub mod backlight;
+pub mod backlight;
 pub mod battery;
 // pub mod bluetooth;
 // pub mod cpu;

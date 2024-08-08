@@ -3,58 +3,54 @@ use crate::modules;
 use crate::utils;
 use crate::formatter;
 use crate::fmtopt;
-use crate::getdata;
 use crate::configmandatory;
 use crate::configoptional;
 
-enum Data {
-    DEVICECURR,
-    DEVICEMAX,
-    FORMAT
+struct Backlight {
+	devicecurr: String,
+	devicemax: String,
+	format: String
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let mut data: Vec<modules::ModuleData> = Vec::new();
+impl Backlight {
+	fn getvalue(&self) -> Result<Option<i64>, String> {
+		let curr: i64 = utils::readlineas(&self.devicecurr)?;
 
-    configmandatory!("_devicecurr", TypeString, data, config);
-    configmandatory!("_devicemax", TypeString, data, config);
-    configoptional!("_format", TypeString, "%u%%", data, config);
+		Ok(Some(curr))
+	}
 
-	Ok(data)
+	fn getmaxvalue(&self) -> Result<Option<i64>, String> {
+		let max: i64 = utils::readlineas(&self.devicemax)?;
+
+		Ok(Some(max))
+	}
+
+	fn getvalueperc(&self) -> Result<Option<f64>, String> {
+		let curr: f64 = self.getvalue()?.unwrap() as f64;
+		let max: f64 = self.getmaxvalue()?.unwrap() as f64;
+
+		Ok(Some(curr / max))
+	}
 }
 
-fn getvalue(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<i64>, String> {
-    getdata!(dev, DEVICECURR, TypeString, data);
-
-    let curr: i64 = utils::readlineas(dev.to_string())?;
-
-    Ok(Some(curr))
+impl modules::ModuleImplementation for Backlight {
+	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
+		formatter::format(&self.format, |tag| {
+			match tag {
+				'c' => fmtopt!(i64 self.getvalue()),
+				'u' => fmtopt!(f64 self.getvalueperc(), "[d.01]"),
+				'm' => fmtopt!(i64 self.getmaxvalue()),
+				_ => Ok(None)
+			}
+		})
+	}
 }
 
-fn getmaxvalue(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<i64>, String> {
-    getdata!(dev, DEVICEMAX, TypeString, data);
-
-    let max: i64 = utils::readlineas(dev.to_string())?;
-
-    Ok(Some(max))
-}
-
-fn getvalueperc(data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<Option<f64>, String> {
-    let curr: f64 = getvalue(data, ts)?.unwrap() as f64;
-    let max: f64 = getmaxvalue(data, ts)?.unwrap() as f64;
-
-    Ok(Some(curr / max))
-}
-
-pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    getdata!(fmt, FORMAT, TypeString, data);
-
-    let opts: &[formatter::FormatOption] = &[
-        fmtopt!('c', i64 getvalue),
-        fmtopt!('u', f64 getvalueperc, "[d.01]"),
-        fmtopt!('m', i64 getmaxvalue),
-    ];
-
-    formatter::format(fmt, opts, data, _ts)
+pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	Ok(Box::new(Backlight {
+		devicecurr: configmandatory!(config, "_devicecurr"),
+		devicemax: configmandatory!(config, "_devicemax"),
+		format: configoptional!(config, "_format", "%u%%".to_string())
+	}))
 }
 

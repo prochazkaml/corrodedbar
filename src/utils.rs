@@ -1,8 +1,7 @@
-use crate::modules;
 use crate::formatter;
 use crate::fmtopt;
 
-pub fn readstring(path: String) -> Result<String, String> {
+pub fn readstring(path: &str) -> Result<String, String> {
     // Yes, this is just a fancy wrapper function.
     
     match std::fs::read_to_string(path) {
@@ -11,7 +10,7 @@ pub fn readstring(path: String) -> Result<String, String> {
     }
 }
 
-pub fn readline(path: String) -> Result<String, String> {
+pub fn readline(path: &str) -> Result<String, String> {
     let file = readstring(path)?;
 
     match file.lines().next() {
@@ -20,7 +19,7 @@ pub fn readline(path: String) -> Result<String, String> {
     }
 }
 
-pub fn readlineas<T>(path: String) -> Result<T, String>
+pub fn readlineas<T>(path: &str) -> Result<T, String>
     where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
     
     match readline(path)?.split(' ').next().unwrap().parse::<T>() {

@@ -20,7 +20,7 @@ impl Battery {
 			("Discharging".to_string(), "🔋")
 		]);
 
-		let status = utils::readline(format!("/sys/class/power_supply/{}/status", self.device))?;
+		let status = utils::readline(&format!("/sys/class/power_supply/{}/status", self.device))?;
 		
 		Ok(Some(match icons.get(&status) {
 			Some(val) => val,
@@ -29,13 +29,13 @@ impl Battery {
 	}
 
 	fn getpercentage(&self) -> Result<Option<f64>, String> {
-		let perc: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/capacity", self.device))?;
+		let perc: f64 = utils::readlineas(&format!("/sys/class/power_supply/{}/capacity", self.device))?;
 
 		Ok(Some(perc / 100.0))
 	}
 
 	fn getpower(&self) -> Result<Option<f64>, String> {
-		let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", self.device))?;
+		let power: f64 = utils::readlineas(&format!("/sys/class/power_supply/{}/power_now", self.device))?;
 
 		Ok(Some(power / 1000000.0))
 	}
@@ -43,19 +43,19 @@ impl Battery {
 	fn getestimate(&self) -> Result<Option<String>, String> {
 		let empty = Ok(Some("--:--".to_string()));
 
-		let status = utils::readline(format!("/sys/class/power_supply/{}/status", self.device))?;
+		let status = utils::readline(&format!("/sys/class/power_supply/{}/status", self.device))?;
 
-		let power: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/power_now", self.device))?;
+		let power: f64 = utils::readlineas(&format!("/sys/class/power_supply/{}/power_now", self.device))?;
 				
 		if power == 0.0 {
 			return empty;
 		}
 
-		let energynow: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_now", self.device))?;
+		let energynow: f64 = utils::readlineas(&format!("/sys/class/power_supply/{}/energy_now", self.device))?;
 		
 		match status.as_str() {
 			"Charging" => {
-				let energyfull: f64 = utils::readlineas(format!("/sys/class/power_supply/{}/energy_full", self.device))?;
+				let energyfull: f64 = utils::readlineas(&format!("/sys/class/power_supply/{}/energy_full", self.device))?;
 
 				utils::formatduration(&self.esttimeformat, (energyfull - energynow) * 3600.0 / power)
 			},
@@ -68,7 +68,7 @@ impl Battery {
 }
 
 impl modules::ModuleImplementation for Battery {
-	fn run(&mut self, ts: std::time::Duration) -> Result<Option<String>, String> {
+	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
 		formatter::format(&self.format, |tag| {
 			match tag {
 				'i' => fmtopt!(String self.geticon()),

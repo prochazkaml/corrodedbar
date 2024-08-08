@@ -1,6 +1,6 @@
 use crate::config;
 //use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, microphone, volume, battery, time};
-use crate::module::battery;
+use crate::module::{backlight, battery};
 use std::time::Duration;
 
 #[macro_export]
@@ -46,15 +46,15 @@ type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Box<dyn ModuleIm
 pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, String> {
 	let mut availablemodules: Vec<(&str, ModuleInitFun)> = Vec::new();
 
+	registermodule!(availablemodules, battery);
+	registermodule!(availablemodules, backlight);
 	// registermodule!(availablemodules, network);
 	// registermodule!(availablemodules, bluetooth);
 	// registermodule!(availablemodules, memory);
 	// registermodule!(availablemodules, uptime);
 	// registermodule!(availablemodules, cpu);
-	// registermodule!(availablemodules, backlight);
 	// registermodule!(availablemodules, microphone);
 	// registermodule!(availablemodules, volume);
-	registermodule!(availablemodules, battery);
 	// registermodule!(availablemodules, time);
 
 	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
