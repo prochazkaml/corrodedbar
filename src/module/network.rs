@@ -66,7 +66,7 @@ impl modules::ModuleImplementation for Network {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	// TODO - specific connection
 	
 	let dbus = match dbus::blocking::Connection::new_system() {

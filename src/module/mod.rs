@@ -7,5 +7,5 @@ pub mod microphone;
 pub mod network;
 pub mod time;
 pub mod uptime;
-// pub mod volume;
+pub mod volume;
 
