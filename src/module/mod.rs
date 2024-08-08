@@ -3,7 +3,7 @@ pub mod battery;
 pub mod bluetooth;
 pub mod cpu;
 pub mod memory;
-// pub mod microphone;
+pub mod microphone;
 // pub mod network;
 // pub mod time;
 // pub mod uptime;

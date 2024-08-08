@@ -1,6 +1,6 @@
 use crate::config;
 //use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, microphone, volume, battery, time};
-use crate::module::{backlight, battery, bluetooth, cpu, memory};
+use crate::module::{backlight, battery, bluetooth, cpu, memory, microphone};
 use std::time::Duration;
 
 #[macro_export]
@@ -51,9 +51,9 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 	registermodule!(availablemodules, bluetooth);
 	registermodule!(availablemodules, cpu);
 	registermodule!(availablemodules, memory);
+	registermodule!(availablemodules, microphone);
 	// registermodule!(availablemodules, network);
 	// registermodule!(availablemodules, uptime);
-	// registermodule!(availablemodules, microphone);
 	// registermodule!(availablemodules, volume);
 	// registermodule!(availablemodules, time);
 
