@@ -1,26 +1,23 @@
 use crate::config;
 use crate::modules;
 use crate::utils;
-use crate::getdata;
 use crate::configoptional;
 
-enum Data {
-    FORMAT
+struct Uptime {
+	format: String
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let mut data: Vec<modules::ModuleData> = Vec::new();
+impl modules::ModuleImplementation for Uptime {
+	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
+		let uptime: f64 = utils::readlineas("/proc/uptime")?;
 
-    configoptional!("_format", TypeString, "%dd %Hh %Mm", data, config);
-
-	Ok(data)
+		utils::formatduration(&self.format, uptime)
+	}
 }
 
-pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    getdata!(fmt, FORMAT, TypeString, data);
-
-    let uptime: f64 = utils::readlineas("/proc/uptime".to_string())?;
-
-    utils::formatduration(fmt, uptime)
+pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	Ok(Box::new(Uptime {
+		format: configoptional!(config, "_format", "%dd %Hh %Mm".to_string())
+	}))
 }
 
