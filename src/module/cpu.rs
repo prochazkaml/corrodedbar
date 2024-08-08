@@ -3,87 +3,80 @@ use crate::modules;
 use crate::utils;
 use crate::formatter;
 use crate::fmtopt;
-use crate::getdata;
 use crate::configmandatory;
 use crate::configoptional;
 
-enum Data {
-    TEMPDEVICE,
-    FORMAT,
-    SUBPROCCPUINFO
+struct Cpu {
+	tempdevice: String,
+	format: String
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Vec<modules::ModuleData>, String> {
-	let mut data: Vec<modules::ModuleData> = Vec::new();
+impl Cpu {
+	fn gettemp(&self) -> Result<Option<f64>, String> {
+		let currtemp: f64 = utils::readlineas(&format!("{}", self.tempdevice))?;
 
-    configmandatory!("_tempdevice", TypeString, data, config);
-    configoptional!("_format", TypeString, "%t°C %F MHz", data, config);
+		Ok(Some(currtemp))
+	}
 
-	Ok(data)
+	fn getfreq(&self, proccpuinfo: String, highest: bool) -> Result<Option<f64>, String> {
+		let lines = proccpuinfo.lines();
+
+		let default: f64 = if highest { 0.0 } else { 1000000.0 };
+
+		let mut target: f64 = default;
+
+		for line in lines {
+			let split: Vec<&str> = line.split_whitespace().collect();
+
+			if split.len() != 4 { continue; }
+			
+			if split[0] == "cpu" && split[1] == "MHz" {
+				let freq = match split[3].parse::<f64>() {
+					Ok(val) => val,
+					Err(_) => { continue; }
+				};
+				
+				if (freq > target && highest) || (freq < target && !highest) {
+					target = freq;
+				}
+			}
+		}
+		
+		Ok(if target != default {
+			Some(target)
+		} else {
+			None
+		})
+	}
+
+	fn gethighestfreq(&self, proccpuinfo: String) -> Result<Option<f64>, String> {
+		self.getfreq(proccpuinfo, true)
+	}
+
+	fn getlowestfreq(&self, proccpuinfo: String) -> Result<Option<f64>, String> {
+		self.getfreq(proccpuinfo, false)
+	}
 }
 
-fn gettemp(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
-    getdata!(dev, TEMPDEVICE, TypeString, data);
+impl modules::ModuleImplementation for Cpu {
+	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
+		let proccpuinfo = utils::readstring("/proc/cpuinfo")?;
 
-    let currtemp: f64 = utils::readlineas(format!("{}", dev))?;
-
-    Ok(Some(currtemp))
+		formatter::format(&self.format, |tag| {
+			match tag {
+				't' => fmtopt!(f64 self.gettemp(), "[d1000 p1]"),
+				'F' => fmtopt!(f64 self.gethighestfreq(proccpuinfo.clone())),
+				'f' => fmtopt!(f64 self.getlowestfreq(proccpuinfo.clone())),
+				_ => Ok(None)
+			}
+		})
+	}
 }
 
-fn getfreq(data: &Vec<modules::ModuleData>, highest: bool) -> Result<Option<f64>, String> {
-    getdata!(file, SUBPROCCPUINFO, TypeString, data);
-
-    let lines = file.lines();
-
-    let default: f64 = if highest { 0.0 } else { 1000000.0 };
-
-    let mut target: f64 = default;
-
-    for line in lines {
-        let split: Vec<&str> = line.split_whitespace().collect();
-
-        if split.len() != 4 { continue; }
-        
-        if split[0] == "cpu" && split[1] == "MHz" {
-            let freq = match split[3].parse::<f64>() {
-                Ok(val) => val,
-                Err(_) => { continue; }
-            };
-            
-            if (freq > target && highest) || (freq < target && !highest) {
-                target = freq;
-            }
-        }
-    }
-    
-    Ok(if target != default {
-        Some(target)
-    } else {
-        None
-    })
-}
-
-fn gethighestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
-    getfreq(data, true)
-}
-
-fn getlowestfreq(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<f64>, String> {
-    getfreq(data, false)
-}
-
-pub fn run(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<String>, String> {
-    getdata!(fmt, FORMAT, TypeString, data);
-    
-    let mut subdata = data.clone();
-    subdata.push(modules::ModuleData::TypeString(utils::readstring("/proc/cpuinfo".to_string())?));
-
-    let opts: &[formatter::FormatOption] = &[
-        fmtopt!('t', f64 gettemp, "[d1000 p1]"),
-        fmtopt!('F', f64 gethighestfreq),
-        fmtopt!('f', f64 getlowestfreq),
-        // fmtopt!('p', String getprocess), // TODO
-    ];
-
-    formatter::format(fmt, opts, &subdata, _ts)
+pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	Ok(Box::new(Cpu {
+		tempdevice: configmandatory!(config, "_tempdevice"),
+		format: configoptional!(config, "_format", "%t°C %F MHz".to_string())
+	}))
 }
 
