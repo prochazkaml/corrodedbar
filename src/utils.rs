@@ -29,32 +29,22 @@ pub fn readlineas<T>(path: String) -> Result<T, String>
     }
 }
 
-fn parsetime(data: &Vec<modules::ModuleData>, _ts: std::time::Duration) -> Result<Option<i64>, String> {
-    let modules::ModuleData::TypeFloat64(time) = &data[0] else {
-        return Err(modules::internalerrormsg());
-    };
-
-    let timeint = (time * 1000.0) as i64;
-
-    Ok(Some(timeint))
-}
-
 pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> {
-    let mut data: Vec<modules::ModuleData> = Vec::new();
-    data.push(modules::ModuleData::TypeFloat64(dur));
+	let timeint = Ok(Some((dur * 1000.0) as i64));
 
-    let opts: &[formatter::FormatOption] = &[
-        fmtopt!('d', i64 parsetime, "[d86400000]"),
-        fmtopt!('H', i64 parsetime, "[d3600000 r24 z2]"),
-        fmtopt!('h', i64 parsetime, "[d3600000]"),
-        fmtopt!('M', i64 parsetime, "[d60000 r60 z2]"),
-        fmtopt!('m', i64 parsetime, "[d60000]"),
-        fmtopt!('S', i64 parsetime, "[d1000 r60 z2]"),
-        fmtopt!('s', i64 parsetime, "[d1000]"),
-        fmtopt!('L', i64 parsetime, "[d1 r60 z2]"),
-        fmtopt!('l', i64 parsetime, "[d1]"),
-    ];
-
-    formatter::format(&fmt, opts, &data, std::time::Duration::MAX)
+    formatter::format(&fmt, |tag| {
+		match tag {
+			'd' => fmtopt!(i64 timeint.clone(), "[d86400000]"),
+			'H' => fmtopt!(i64 timeint.clone(), "[d3600000 r24 z2]"),
+			'h' => fmtopt!(i64 timeint.clone(), "[d3600000]"),
+			'M' => fmtopt!(i64 timeint.clone(), "[d60000 r60 z2]"),
+			'm' => fmtopt!(i64 timeint.clone(), "[d60000]"),
+			'S' => fmtopt!(i64 timeint.clone(), "[d1000 r60 z2]"),
+			's' => fmtopt!(i64 timeint.clone(), "[d1000]"),
+			'L' => fmtopt!(i64 timeint.clone(), "[d1 r60 z2]"),
+			'l' => fmtopt!(i64 timeint.clone(), "[d1]"),
+			_ => Ok(None)
+		}
+	})
 }
 

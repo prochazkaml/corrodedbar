@@ -3,18 +3,17 @@ use crate::modules;
 
 type CharIterator<'a> = std::iter::Peekable<std::str::Chars<'a>>;
 
-type FmtGenStringFn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<String>, String>;
-type FmtGenString = FmtGenStringFn;
+pub struct FmtGenString {
+	pub val: String
+}
 
-type FmtGenFloat64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<f64>, String>;
 pub struct FmtGenFloat64 {
-    pub fun: FmtGenFloat64Fn,
+    pub val: f64,
     pub defaultfmt: Option<String>
 }
 
-type FmtGenInt64Fn = fn(&Vec<modules::ModuleData>, std::time::Duration) -> Result<Option<i64>, String>;
 pub struct FmtGenInt64 {
-    pub fun: FmtGenInt64Fn,
+    pub val: i64,
     pub defaultfmt: Option<String>
 }
 
@@ -24,54 +23,56 @@ pub enum FormatGenerator {
     OutputInt64(FmtGenInt64)
 }
 
-pub struct FormatOption {
-    pub id: char,
-    pub generate: FormatGenerator
-}
-
 #[macro_export]
 macro_rules! fmtopt {
-	($char:literal, String $fnname:ident) => {
-		formatter::FormatOption {
-			id: $char,
-            generate: formatter::FormatGenerator::OutputString($fnname)
+	($type:ident $val:expr, $other:expr) => {
+		match $val {
+			Ok(val) => match val {
+				Some(val) => Ok(Some(fmtopt!($type enum val, $other))),
+				None => Ok(None)
+			},
+			Err(val) => Err(val)
 		}
 	};
-	($char:literal, f64 $fnname:ident) => {
-		formatter::FormatOption {
-			id: $char,
-            generate: formatter::FormatGenerator::OutputFloat64(formatter::FmtGenFloat64 {
-                fun: $fnname,
-                defaultfmt: None
-            })
+
+	($type:ident $val:expr) => {
+		match $val {
+			Ok(val) => match val {
+				Some(val) => Ok(Some(fmtopt!($type enum val))),
+				None => Ok(None)
+			},
+			Err(val) => Err(val)
 		}
 	};
-	($char:literal, f64 $fnname:ident, $defaultfmt:literal) => {
-		formatter::FormatOption {
-			id: $char,
-            generate: formatter::FormatGenerator::OutputFloat64(formatter::FmtGenFloat64 {
-                fun: $fnname,
-                defaultfmt: Some($defaultfmt.to_string())
-            })
-		}
+
+	(String enum $val:expr) => {
+		formatter::FormatGenerator::OutputString(formatter::FmtGenString {
+			val: $val
+		})
 	};
-	($char:literal, i64 $fnname:ident) => {
-		formatter::FormatOption {
-			id: $char,
-            generate: formatter::FormatGenerator::OutputInt64(formatter::FmtGenInt64 {
-                fun: $fnname,
-                defaultfmt: None
-            })
-		}
+	(f64 enum $val:expr) => {
+		formatter::FormatGenerator::OutputFloat64(formatter::FmtGenFloat64 {
+			val: $val,
+			defaultfmt: None
+		})
 	};
-	($char:literal, i64 $fnname:ident, $defaultfmt:literal) => {
-		formatter::FormatOption {
-			id: $char,
-            generate: formatter::FormatGenerator::OutputInt64(formatter::FmtGenInt64 {
-                fun: $fnname,
-                defaultfmt: Some($defaultfmt.to_string())
-            })
-		}
+	(f64 enum $val:expr, $defaultfmt:literal) => {
+		formatter::FormatGenerator::OutputFloat64(formatter::FmtGenFloat64 {
+			val: $val,
+			defaultfmt: Some($defaultfmt.to_string())
+		})
+	};
+	(i64 enum $val:expr) => {
+		formatter::FormatGenerator::OutputInt64(formatter::FmtGenInt64 {
+			val: $val,
+			defaultfmt: None
+		})
+	};
+	(i64 enum $val:expr, $defaultfmt:literal) => {
+		formatter::FormatGenerator::OutputInt64(formatter::FmtGenInt64 {
+			val: $val,
+			defaultfmt: Some($defaultfmt.to_string())
+		})
 	};
 }
 
@@ -93,18 +94,6 @@ enum FormatOptionParamVal {
 struct FormatOptionParam {
     pub id: char,
     pub val: FormatOptionParamVal
-}
-
-fn callformatfnstr(fun: &FmtGenString, _iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
-    /*
-     * String format syntax: `%T`
-     *   T = token
-     */
-
-    match fun(data, ts)? {
-        Some(val) => return Ok(val),
-        None => return Ok("".to_string())
-    }
 }
 
 macro_rules! handlefmtopt {
@@ -176,7 +165,7 @@ fn parsefmtoptparams(opts: &mut [FormatOptionParam], iter: &mut CharIterator) {
     }
 }
 
-fn callformatfnf64(fun: &FmtGenFloat64, iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+fn parsefmtf64(iter: &mut CharIterator, val: FmtGenFloat64) -> Result<String, String> {
     /*
      * Float format syntax: `%T[dD pP zZ]`
      *   T = token
@@ -190,10 +179,7 @@ fn callformatfnf64(fun: &FmtGenFloat64, iter: &mut CharIterator, data: &Vec<modu
      *   result = fnoutput / D; rounded to P decimal places, zero-padded to Z digits
      */
 
-    let mut result: f64 = match (fun.fun)(data, ts)? {
-        Some(val) => val,
-        None => return Ok("?".to_string())
-    };
+    let mut result = val.val;
 
     let opts: &mut [FormatOptionParam] = &mut [
         fmtoptparam!('d', TypeFloat64, 1.0),
@@ -201,7 +187,7 @@ fn callformatfnf64(fun: &FmtGenFloat64, iter: &mut CharIterator, data: &Vec<modu
         fmtoptparam!('z', TypeUsize, 0)
     ];
 
-    match &fun.defaultfmt {
+    match &val.defaultfmt {
         Some(fmt) => parsefmtoptparams(opts, &mut fmt.chars().peekable()),
         None => {}
     }
@@ -236,7 +222,7 @@ fn callformatfnf64(fun: &FmtGenFloat64, iter: &mut CharIterator, data: &Vec<modu
     })
 }
 
-fn callformatfni64(fun: &FmtGenInt64, iter: &mut CharIterator, data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
+fn parsefmti64(iter: &mut CharIterator, val: FmtGenInt64) -> Result<String, String> {
     /*
      * Float format syntax: `%T[dD rR zZ]`
      *   T = token
@@ -250,18 +236,15 @@ fn callformatfni64(fun: &FmtGenInt64, iter: &mut CharIterator, data: &Vec<module
      *   result = (fnoutput / D) % R; zero-padded to Z digits
      */
 
-    let mut result: i64 = match (fun.fun)(data, ts)? {
-        Some(val) => val,
-        None => return Ok("?".to_string())
-    };
-
     let opts: &mut [FormatOptionParam] = &mut [
         fmtoptparam!('d', TypeInt64, 1),
         fmtoptparam!('r', TypeInt64, 0),
         fmtoptparam!('z', TypeUsize, 0)
     ];
 
-    match &fun.defaultfmt {
+	let mut result = val.val;
+
+    match &val.defaultfmt {
         Some(fmt) => parsefmtoptparams(opts, &mut fmt.chars().peekable()),
         None => {}
     }
@@ -300,32 +283,16 @@ fn callformatfni64(fun: &FmtGenInt64, iter: &mut CharIterator, data: &Vec<module
     })
 }
 
-fn callformatfn(iter: &mut CharIterator, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<String, String> {
-    let default = "%".to_string();
-
-    let c = match iter.next() {
-        Some(c) => c,
-        None => return Ok(default)
-    };
-
-    if c == '%' {
-        return Ok(default);
-    }
-
-    for opt in fmtopts {
-        if opt.id == c {
-            match &opt.generate {
-                FormatGenerator::OutputString(fun) => return callformatfnstr(&fun, iter, data, ts),
-                FormatGenerator::OutputFloat64(fun) => return callformatfnf64(&fun, iter, data, ts),
-                FormatGenerator::OutputInt64(fun) => return callformatfni64(&fun, iter, data, ts)
-            }
-        }
-    }
-
-    Ok(format!("%{}", c))
+fn parsefmtval(iter: &mut CharIterator, val: FormatGenerator) -> Result<String, String> {
+	match val {
+		FormatGenerator::OutputString(val) => Ok(val.val),
+		FormatGenerator::OutputFloat64(val) => parsefmtf64(iter, val),
+		FormatGenerator::OutputInt64(val) => parsefmti64(iter, val)
+	}
 }
+//pub fn run_thread<F>(ctx: &mut AppContext, f: F) -> Result<(), Value> where F: FnOnce() -> Result<(), Value> + std::marker::Send + 'static {
 
-pub fn format(fmt: &String, fmtopts: &[FormatOption], data: &Vec<modules::ModuleData>, ts: std::time::Duration) -> Result<Option<String>, String> {
+pub fn format<F>(fmt: &String, f: F) -> Result<Option<String>, String> where F: Fn(char) -> Result<Option<FormatGenerator>, String> {
     let mut out = String::new();
     
     let mut iter = fmt.chars().peekable();
@@ -337,7 +304,16 @@ pub fn format(fmt: &String, fmtopts: &[FormatOption], data: &Vec<modules::Module
         };
 
         if c == '%' {
-            out += &callformatfn(&mut iter, fmtopts, data, ts)?;
+			let tag = match iter.next() {
+				Some(val) => val,
+				None => break
+			};
+
+			match f(tag)? {
+				Some(val) => out += &parsefmtval(&mut iter, val)?,
+				None => out.push(tag)
+			};
+
             continue;
         }
 

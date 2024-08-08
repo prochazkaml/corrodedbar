@@ -5,12 +5,12 @@ use crate::args;
 use std::time::{Duration, Instant};
 use signal_hook::iterator::Signals;
 
-pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRuntime>, params: &args::AppParams) {
+pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::ModuleRuntime>, params: &args::AppParams) {
     let mut counters: Vec<Duration> = Vec::new();
     let mut interrupts: Vec<bool> = vec![false; modules.len()];
     let mut strings: Vec<Option<String>> = vec![None; modules.len()];
     
-    for module in modules {
+    for module in &mut *modules {
         counters.push(module.startdelay);
     }
 
@@ -77,10 +77,10 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &Vec<modules::ModuleRunt
             if elapsed < counters[i] && !interrupts[i] { continue; }
 
             if params.verbose {
-                println!("Running module {}.", modules[i].module.name);
+                println!("Running module {}.", &modules[i].name);
             }
 
-            strings[i] = match (modules[i].module.run)(&modules[i].data, counters[i]) {
+            strings[i] = match modules[i].module.run(counters[i]) {
                 Ok(val) => val,
                 Err(errmsg) => {
                     if params.verbose {

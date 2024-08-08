@@ -1,94 +1,62 @@
 use crate::config;
-use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, microphone, volume, battery, time};
+//use crate::module::{network, bluetooth, memory, uptime, cpu, backlight, microphone, volume, battery, time};
+use crate::module::battery;
 use std::time::Duration;
 
 #[macro_export]
 macro_rules! configmandatory {
-    ($idx:literal, $type:ident, $to:ident, $from:ident) => {
-        $to.push(modules::ModuleData::$type(match config::getkeyvalueas($from, $idx) {
+    ($from:ident, $idx:literal) => {
+        match config::getkeyvalueas($from, $idx) {
             Some(val) => val,
             None => {
                 return Err(format!("Error: {} not defined in the config", $idx));
             }
-        }));
+        }
     }
 }
 
 #[macro_export]
 macro_rules! configoptional {
-    ($idx:literal, TypeString, $default:literal, $to:ident, $from:ident) => {
-        $to.push(modules::ModuleData::TypeString(config::getkeyvaluedefault($from, $idx, $default)));
+    ($from:ident, $idx:literal, $default:expr) => {
+        config::getkeyvaluedefaultas($from, $idx, $default)
     };
-    ($idx:literal, $type:ident, $default:literal, $to:ident, $from:ident) => {
-        $to.push(modules::ModuleData::$type(config::getkeyvaluedefaultas($from, $idx, $default)));
-    }
 }
 
-#[macro_export]
-macro_rules! getdata {
-    ($to:ident, $idx:ident, $type:ident, $from:ident) => {
-        let modules::ModuleData::$type($to) = &$from[Data::$idx as usize] else {
-            return Err(modules::internalerrormsg());
-        };
-    }
+pub trait ModuleImplementation {
+	fn run(&mut self, ts: Duration) -> Result<Option<String>, String>;
 }
 
-#[allow(dead_code)]
-#[derive(Clone)]
-pub enum ModuleData {
-	TypeString(String),
-    TypeBool(bool),
-	TypeInt32(i32),
-	TypeUInt32(u32),
-	TypeInt64(i64),
-	TypeUInt64(u64),
-	TypeFloat32(f32),
-	TypeFloat64(f64)
-}
-
-type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Vec<ModuleData>, String>;
-type ModuleRunFun = fn(&Vec<ModuleData>, Duration) -> Result<Option<String>, String>;
-
-macro_rules! registermodule {
-	($name:ident) => {
-		ModuleImplementation {
-			name: stringify!($name),
-			init: $name::init,
-			run: $name::run
-		}
-	}
-}
-
-pub struct ModuleImplementation {
-	pub name: &'static str,
-	pub init: ModuleInitFun,
-	pub run: ModuleRunFun
-}
-
-pub static MODULELIST: &[ModuleImplementation] = &[
-	registermodule!(network),
-	registermodule!(bluetooth),
-	registermodule!(memory),
-	registermodule!(uptime),
-	registermodule!(cpu),
-	registermodule!(backlight),
-	registermodule!(microphone),
-	registermodule!(volume),
-	registermodule!(battery),
-	registermodule!(time)
-];
-
-pub struct ModuleRuntime<'a> {
-	//pub settings: &'a Vec<config::ConfigKeyValue>,
-	pub module: &'a ModuleImplementation,
-	pub data: Vec<ModuleData>,
+pub struct ModuleRuntime {
+	pub module: Box<dyn ModuleImplementation>,
+	pub name: String,
 	pub icon: Option<String>,
 	pub unixsignal: Option<u8>,
 	pub interval: Duration,
 	pub startdelay: Duration
 }
 
+macro_rules! registermodule {
+    ($dest:ident, $name:ident) => {
+        $dest.push((stringify!($name), $name::init));
+    };
+}
+
+type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Box<dyn ModuleImplementation>, String>;
+
 pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, String> {
+	let mut availablemodules: Vec<(&str, ModuleInitFun)> = Vec::new();
+
+	// registermodule!(availablemodules, network);
+	// registermodule!(availablemodules, bluetooth);
+	// registermodule!(availablemodules, memory);
+	// registermodule!(availablemodules, uptime);
+	// registermodule!(availablemodules, cpu);
+	// registermodule!(availablemodules, backlight);
+	// registermodule!(availablemodules, microphone);
+	// registermodule!(availablemodules, volume);
+	registermodule!(availablemodules, battery);
+	// registermodule!(availablemodules, time);
+
 	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
 
     let cfgmodulesstr = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
@@ -119,27 +87,29 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 			}
 		};
 
-		let mut module: Option<&ModuleImplementation> = None;
+		let mut moduleinit: Option<&ModuleInitFun> = None;
 
-		for j in 0..MODULELIST.len() {
-			if implem == MODULELIST[j].name {
-				module = Some(&MODULELIST[j]);
+		for j in 0..availablemodules.len() {
+			if implem == availablemodules[j].0 {
+				moduleinit = Some(&availablemodules[j].1);
 			}
 		}
 
-		if module.is_none() {
-			println!(" -> could not find an implementation for {}, skipping", implem);
-			continue;
-		}
+		let moduleinit = match moduleinit {
+			Some(val) => val,
+			None => {
+				println!(" -> could not find an implementation for {}, skipping", implem);
+				continue;
+			}
+		};
 
 		let interval: u64 = config::getkeyvaluedefaultas(&modsettings, "interval", 1000);
 		let startdelay: u64 = config::getkeyvaluedefaultas(&modsettings, "startdelay", 0);
 
-		match (module.unwrap().init)(&modsettings) {
+		match moduleinit(&modsettings) {
 			Ok(val) => loadedmodules.push(ModuleRuntime {
-				//settings: &config[i + 1].settings,
-				module: module.unwrap(),
-				data: val,
+				module: val,
+				name: implem,
 				icon: config::getkeyvalue(&modsettings, "icon"),
 				unixsignal: config::getkeyvalueas(&modsettings, "unixsignal"),
 				interval: Duration::from_millis(interval),

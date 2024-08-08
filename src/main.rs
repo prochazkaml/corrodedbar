@@ -21,7 +21,7 @@ fn run(params: &args::AppParams) -> bool {
 
 	// Initialize all modules
 
-	let loadedmodules = match modules::init(&config) {
+	let mut loadedmodules = match modules::init(&config) {
 		Ok(val) => val,
 		Err(errmsg) => {
 			wm::setrootname(&errmsg);
@@ -34,7 +34,7 @@ fn run(params: &args::AppParams) -> bool {
 
 	// Start the scheduler
 	
-	scheduler::run(&config, &loadedmodules, params);
+	scheduler::run(&config, &mut loadedmodules, params);
 
     true
 }
