@@ -24,6 +24,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
     let rightpad = config::getkeyvaluedefault(&general, "rightpad", defaults[1]);
     let delim = config::getkeyvaluedefault(&general, "delim", defaults[2]);
 
+    let mut lastoutput = "".to_string();
+
     let maxdelay: Duration = match config::getkeyvalueas(&general, "maxinterval") as Option<u64> {
         Some(val) => Duration::from_millis(val),
         None => Duration::MAX
@@ -124,7 +126,10 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 
         output += &rightpad;
 
-        wm::setrootname(&output);
+        if output != lastoutput {
+            wm::setrootname(&output);
+            lastoutput = output;
+        }
 
         // Figure out how much we have to sleep for
         
