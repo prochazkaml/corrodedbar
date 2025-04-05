@@ -4,21 +4,21 @@ use std::time::Duration;
 
 #[macro_export]
 macro_rules! configmandatory {
-    ($from:ident, $idx:literal) => {
-        match config::getkeyvalueas($from, $idx) {
-            Some(val) => val,
-            None => {
-                return Err(format!("Error: {} not defined in the config", $idx));
-            }
-        }
-    }
+	($from:ident, $idx:literal) => {
+		match config::getkeyvalueas($from, $idx) {
+			Some(val) => val,
+			None => {
+				return Err(format!("Error: {} not defined in the config", $idx));
+			}
+		}
+	}
 }
 
 #[macro_export]
 macro_rules! configoptional {
-    ($from:ident, $idx:literal, $default:expr) => {
-        config::getkeyvaluedefaultas($from, $idx, $default)
-    };
+	($from:ident, $idx:literal, $default:expr) => {
+		config::getkeyvaluedefaultas($from, $idx, $default)
+	};
 }
 
 pub trait ModuleImplementation {
@@ -35,9 +35,9 @@ pub struct ModuleRuntime {
 }
 
 macro_rules! registermodule {
-    ($dest:ident, $name:ident) => {
-        $dest.push((stringify!($name), $name::init));
-    };
+	($dest:ident, $name:ident) => {
+		$dest.push((stringify!($name), $name::init));
+	};
 }
 
 type ModuleInitFun = fn(&Vec<config::ConfigKeyValue>) -> Result<Box<dyn ModuleImplementation>, String>;
@@ -58,14 +58,14 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 
 	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
 
-    let cfgmodulesstr = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
+	let cfgmodulesstr = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
 		Some(val) => val,
 		None => {
 			return Err("There are no modules to load - module [general] must contain a list of modules to enable.".to_string());
 		}
 	};
 
-    let enabledmodules: Vec<&str> = cfgmodulesstr.split_whitespace().collect();
+	let enabledmodules: Vec<&str> = cfgmodulesstr.split_whitespace().collect();
 
 	for (i, name) in enabledmodules.iter().enumerate() {
 		println!("[{}/{}] Initializing module {}", i + 1, enabledmodules.len(), name);
@@ -122,6 +122,6 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 }
 
 pub fn internalerrormsg() -> String {
-    return "Internal error".to_string();
+	return "Internal error".to_string();
 }
 
