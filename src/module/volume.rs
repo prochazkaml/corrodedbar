@@ -24,10 +24,10 @@ impl modules::ModuleImplementation for Volume {
 }
 
 pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-    let handler = match SinkController::create() {
-        Ok(val) => val,
-        Err(_) => { return Err("PulseAudio conn error".to_string()); }
-    };
+	let handler = match SinkController::create() {
+		Ok(val) => val,
+		Err(_) => { return Err("PulseAudio conn error".to_string()); }
+	};
 
 	Ok(Box::new(Volume {
 		handler

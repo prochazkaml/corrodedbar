@@ -10,13 +10,13 @@ struct Network {
 }
 
 fn ipv4_format(ip: u32, mask: u32) -> String {
-    format!("{}.{}.{}.{}/{}",
-        ip & 0xFF,
-        (ip >> 8) & 0xFF,
-        (ip >> 16) & 0xFF,
-        ip >> 24,
-        mask
-    )
+	format!("{}.{}.{}.{}/{}",
+		ip & 0xFF,
+		(ip >> 8) & 0xFF,
+		(ip >> 16) & 0xFF,
+		ip >> 24,
+		mask
+	)
 }
 
 impl modules::ModuleImplementation for Network {

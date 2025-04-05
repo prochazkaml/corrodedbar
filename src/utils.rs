@@ -2,36 +2,36 @@ use crate::formatter;
 use crate::fmtopt;
 
 pub fn readstring(path: &str) -> Result<String, String> {
-    // Yes, this is just a fancy wrapper function.
-    
-    match std::fs::read_to_string(path) {
-        Ok(val) => Ok(val),
-        Err(errmsg) => Err(format!("File read error: {}", errmsg))
-    }
+	// Yes, this is just a fancy wrapper function.
+	
+	match std::fs::read_to_string(path) {
+		Ok(val) => Ok(val),
+		Err(errmsg) => Err(format!("File read error: {}", errmsg))
+	}
 }
 
 pub fn readline(path: &str) -> Result<String, String> {
-    let file = readstring(path)?;
+	let file = readstring(path)?;
 
-    match file.lines().next() {
-        Some(val) => Ok(val.to_string()),
-        None => { return Err("File parse error".to_string()); }
-    }
+	match file.lines().next() {
+		Some(val) => Ok(val.to_string()),
+		None => { return Err("File parse error".to_string()); }
+	}
 }
 
 pub fn readlineas<T>(path: &str) -> Result<T, String>
-    where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
-    
-    match readline(path)?.split(' ').next().unwrap().parse::<T>() {
-        Ok(val) => Ok(val),
-        Err(_) => { return Err("Format error".to_string()); }
-    }
+	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
+	
+	match readline(path)?.split(' ').next().unwrap().parse::<T>() {
+		Ok(val) => Ok(val),
+		Err(_) => { return Err("Format error".to_string()); }
+	}
 }
 
 pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> {
 	let timeint = Ok(Some((dur * 1000.0) as i64));
 
-    formatter::format(&fmt, |tag| {
+	formatter::format(&fmt, |tag| {
 		match tag {
 			'd' => fmtopt!(i64 timeint.clone(), "[d86400000]"),
 			'H' => fmtopt!(i64 timeint.clone(), "[d3600000 r24 z2]"),

@@ -29,28 +29,28 @@ pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<Str
 }
 
 pub fn getkeyvaluedefault<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &str) -> String {
-    match getkeyvalue(module, key) {
-        Some(val) => val,
-        None => default.to_string()
-    }
+	match getkeyvalue(module, key) {
+		Some(val) => val,
+		None => default.to_string()
+	}
 }
 
 pub fn getkeyvalueas<T>(module: &Vec<ConfigKeyValue>, key: &str) -> Option<T>
-    where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
+	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
-    match getkeyvalue(module, key) {
-        Some(val) => Some(val.parse::<T>().expect("")),
-        None => None
-    }
+	match getkeyvalue(module, key) {
+		Some(val) => Some(val.parse::<T>().expect("")),
+		None => None
+	}
 }
 
 pub fn getkeyvaluedefaultas<T>(module: &Vec<ConfigKeyValue>, key: &str, default: T) -> T
-    where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
+	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
-    match getkeyvalueas(module, key) {
-        Some(val) => val,
-        None => default
-    }
+	match getkeyvalueas(module, key) {
+		Some(val) => val,
+		None => default
+	}
 }
 
 fn getxdgconfigpath() -> Option<String> {
@@ -88,30 +88,30 @@ pub fn getconfigfilemtime() -> Result<String, String> {
 		}
 	};
 
-    let configpath = configdirpath + "/main.conf";
+	let configpath = configdirpath + "/main.conf";
 
-    let metadata = match std::fs::metadata(configpath) {
-        Ok(val) => val,
-        Err(_) => {
-            return Err("Error fetching config file metadata.".to_string());
-        }
-    };
+	let metadata = match std::fs::metadata(configpath) {
+		Ok(val) => val,
+		Err(_) => {
+			return Err("Error fetching config file metadata.".to_string());
+		}
+	};
 
-    let modified = match metadata.modified() {
-        Ok(val) => val,
-        Err(_) => {
-            return Err("Error determining config file mtime.".to_string());
-        }
-    };
+	let modified = match metadata.modified() {
+		Ok(val) => val,
+		Err(_) => {
+			return Err("Error determining config file mtime.".to_string());
+		}
+	};
 
-    let mtime = match modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
-        Ok(val) => val.as_millis().to_string(),
-        Err(_) => {
-            return Err("Config file mtime invalid.".to_string());
-        }
-    };
+	let mtime = match modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
+		Ok(val) => val.as_millis().to_string(),
+		Err(_) => {
+			return Err("Config file mtime invalid.".to_string());
+		}
+	};
 
-    Ok(mtime)
+	Ok(mtime)
 }
 
 pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
@@ -122,7 +122,7 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 		}
 	};
 
-    let configpath = configdirpath.clone() + "/main.conf";
+	let configpath = configdirpath.clone() + "/main.conf";
 
 	let configcontents = match std::fs::read_to_string(configpath.clone()) {
 		Ok(value) => value,
@@ -143,7 +143,7 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 
 	let configlines = configcontents.lines();
 
-    let mut foundgeneral: bool = false;
+	let mut foundgeneral: bool = false;
 	let mut currmodule: String;
 	let mut output: Vec<ConfigModule> = Vec::new();
 
@@ -157,7 +157,7 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 		// Check for module name tag (eg. "[network]")
 
 		if line.chars().nth(0).unwrap() == '[' && line.chars().last().unwrap() == ']' {
-            let newmodule = line[1..line.len()-1].to_string();
+			let newmodule = line[1..line.len()-1].to_string();
 
 			currmodule = newmodule;
 			
@@ -166,17 +166,17 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 				settings: Vec::new()
 			});
 
-            if currmodule == "general".to_string() {
-                foundgeneral = true;
+			if currmodule == "general".to_string() {
+				foundgeneral = true;
 
-                match getconfigfilemtime() {
-                    Ok(val) => output.last_mut().unwrap().settings.push(ConfigKeyValue {
-                        key: "configmtime".to_string(),
-                        value: val
-                    }),
-                    _ => {}
-                }
-            }
+				match getconfigfilemtime() {
+					Ok(val) => output.last_mut().unwrap().settings.push(ConfigKeyValue {
+						key: "configmtime".to_string(),
+						value: val
+					}),
+					_ => {}
+				}
+			}
 
 			continue;
 		}
@@ -188,13 +188,13 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 			None => { return Err(format!("Syntax error at line {}: expected key/value pair", linenum + 1)); }
 		};
 
-        let mut valuetrim = value.trim();
+		let mut valuetrim = value.trim();
 
-        if valuetrim.len() <= 0 { continue; }
+		if valuetrim.len() <= 0 { continue; }
 
-        if valuetrim.chars().nth(0).unwrap() == '"' && valuetrim.chars().last().unwrap() == '"' {
-            valuetrim = &valuetrim[1..valuetrim.len()-1];
-        }
+		if valuetrim.chars().nth(0).unwrap() == '"' && valuetrim.chars().last().unwrap() == '"' {
+			valuetrim = &valuetrim[1..valuetrim.len()-1];
+		}
 
 		if output.len() <= 0 {
 			return Err(format!("Syntax error at line {}: key/value pair found before any module tag", linenum + 1));
@@ -206,9 +206,9 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 		});
 	}
 
-    if !foundgeneral {
-        return Err("The config file is missing the [general] module.".to_string());
-    }
+	if !foundgeneral {
+		return Err("The config file is missing the [general] module.".to_string());
+	}
 
 	Ok(output)
 }

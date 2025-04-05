@@ -36,22 +36,22 @@ fn run(params: &args::AppParams) -> bool {
 	
 	scheduler::run(&config, &mut loadedmodules, params);
 
-    true
+	true
 }
 
 fn main() {
-    let params = args::init();
+	let params = args::init();
 
-    loop {
-        match run(&params) {
-            true => {
-                println!("Detected config file change, reloading.");
-            },
-            false => {
-                println!("Init failed. Will try again in 1s...");
-                std::thread::sleep(std::time::Duration::from_millis(1000));
-            }
-        }
-    }
+	loop {
+		match run(&params) {
+			true => {
+				println!("Detected config file change, reloading.");
+			},
+			false => {
+				println!("Init failed. Will try again in 1s...");
+				std::thread::sleep(std::time::Duration::from_millis(1000));
+			}
+		}
+	}
 }
 
