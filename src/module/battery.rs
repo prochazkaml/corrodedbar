@@ -14,19 +14,17 @@ struct Battery {
 
 impl Battery {
 	fn geticon(&self) -> Result<Option<String>, String> {
-		let icons = std::collections::HashMap::from([
-			("Charging".to_string(), "🔌"),
-			("Full".to_string(), "✔️"),
-			("Not charging".to_string(), "✔️"),
-			("Discharging".to_string(), "🔋")
-		]);
-
 		let status = utils::readline(&format!("/sys/class/power_supply/{}/status", self.device))?;
+
+		let icon = match status.as_str() {
+			"Charging" => "🔌",
+			"Full" => "✔️",
+			"Not charging" => "✔️",
+			"Discharging" => "🔋",
+			_ => "?"
+		};
 		
-		Ok(Some(match icons.get(&status) {
-			Some(val) => val,
-			None => "?"
-		}.to_string()))
+		Ok(Some(icon.to_string()))
 	}
 
 	fn getpercentage(&self) -> Result<Option<f64>, String> {
