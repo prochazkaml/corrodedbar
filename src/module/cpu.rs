@@ -19,11 +19,11 @@ impl Cpu {
 	}
 
 	fn tryfindtemp(&self) -> Result<Option<f64>, String> {
-		let dir = std::fs::read_dir("/sys/class/hwmon").map_err(|x| format!("{}", x))?;
+		let dir = std::fs::read_dir("/sys/class/hwmon").map_err(|x| x.to_string())?;
 
 		for hwmon in dir {
 			let hwmon = hwmon.unwrap().path();
-			let hwmon = std::fs::read_dir(&hwmon).map_err(|x| format!("{}", x))?;
+			let hwmon = std::fs::read_dir(&hwmon).map_err(|x| x.to_string())?;
 
 			for temp in hwmon {
 				let path = temp.unwrap().path();

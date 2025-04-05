@@ -9,48 +9,35 @@ pub struct ConfigModule {
 }
 
 pub fn getmodule<'a>(cfg: &'a Vec<ConfigModule>, name: &str) -> Option<&'a Vec<ConfigKeyValue>> {
-	let namestr = name.to_string();
-
 	for module in cfg {
-		if module.name == namestr { return Some(&module.settings); }
+		if module.name == name { return Some(&module.settings); }
 	}
 
 	None
 }
 
 pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<String> {
-	let keystr = key.to_string();
-
 	for keyvalue in module {
-		if keyvalue.key == keystr { return Some((keyvalue.value).clone()); }
+		if keyvalue.key == key { return Some((keyvalue.value).clone()); }
 	}
 	
 	None
 }
 
 pub fn getkeyvaluedefault<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &str) -> String {
-	match getkeyvalue(module, key) {
-		Some(val) => val,
-		None => default.to_string()
-	}
+	getkeyvalue(module, key).unwrap_or(default.to_string())
 }
 
 pub fn getkeyvalueas<T>(module: &Vec<ConfigKeyValue>, key: &str) -> Option<T>
 	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
-	match getkeyvalue(module, key) {
-		Some(val) => Some(val.parse::<T>().expect("")),
-		None => None
-	}
+	Some(getkeyvalue(module, key)?.parse::<T>().unwrap())
 }
 
 pub fn getkeyvaluedefaultas<T>(module: &Vec<ConfigKeyValue>, key: &str, default: T) -> T
 	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
-	match getkeyvalueas(module, key) {
-		Some(val) => val,
-		None => default
-	}
+	getkeyvalueas(module, key).unwrap_or(default)
 }
 
 fn getxdgconfigpath() -> Option<String> {
@@ -58,68 +45,42 @@ fn getxdgconfigpath() -> Option<String> {
 }
 
 fn getfakexdgconfigpath() -> Option<String> {
-	match Some(std::env::var_os("HOME")?.into_string().ok()?) {
-		Some(path) => Some(path + "/.config"),
-		None => None
-	}
+	Some(std::env::var_os("XDG_CONFIG_HOME")?.into_string().ok()? + "/.config")
 }
 
 fn getgeneralconfigpath() -> Option<String> {
 	// Try the official XDG config path, if that fails, fall back to $HOME/.config
 
-	match getxdgconfigpath() {
-		Some(path) => Some(path),
-		None => getfakexdgconfigpath()	
-	}
+	Some(getxdgconfigpath().or_else(getfakexdgconfigpath)?)
 }
 
 fn getconfigpath() -> Option<String> {
-	match getgeneralconfigpath() {
-		Some(path) => Some(path + "/corrodedbar"),
-		None => None
-	}
+	Some(getgeneralconfigpath()? + "/corrodedbar")
 }
 
 pub fn getconfigfilemtime() -> Result<String, String> {
-	let configdirpath = match getconfigpath() {
-		Some(path) => path,
-		None => {
-			return Err("Could not determine the config directory. Make sure $HOME is set.".to_string());
-		}
+	let Some(configdirpath) = getconfigpath() else {
+		Err("Could not determine the config directory. Make sure $HOME is set.".to_string())?
 	};
 
 	let configpath = configdirpath + "/main.conf";
 
-	let metadata = match std::fs::metadata(configpath) {
-		Ok(val) => val,
-		Err(_) => {
-			return Err("Error fetching config file metadata.".to_string());
-		}
-	};
+	let metadata = std::fs::metadata(configpath)
+		.map_err(|e| format!("Error fetching config file metadata: {}", e))?;
 
-	let modified = match metadata.modified() {
-		Ok(val) => val,
-		Err(_) => {
-			return Err("Error determining config file mtime.".to_string());
-		}
-	};
+	let modified = metadata.modified()
+		.map_err(|e| format!("Error determining config file mtime: {}", e))?;
 
-	let mtime = match modified.duration_since(std::time::SystemTime::UNIX_EPOCH) {
-		Ok(val) => val.as_millis().to_string(),
-		Err(_) => {
-			return Err("Config file mtime invalid.".to_string());
-		}
-	};
+	let mtime = modified.duration_since(std::time::SystemTime::UNIX_EPOCH)
+		.map_err(|e| format!("Config file mtime invalid: {}", e))?
+		.as_millis().to_string();
 
 	Ok(mtime)
 }
 
 pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
-	let configdirpath = match getconfigpath() {
-		Some(path) => path,
-		None => {
-			return Err("Could not determine the config directory. Make sure $HOME is set.".to_string());
-		}
+	let Some(configdirpath) = getconfigpath() else {
+		Err("Could not determine the config directory. Make sure $HOME is set.".to_string())?
 	};
 
 	let configpath = configdirpath.clone() + "/main.conf";
@@ -127,17 +88,17 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 	let configcontents = match std::fs::read_to_string(configpath.clone()) {
 		Ok(value) => value,
 		Err(_) => {
-			match std::fs::create_dir_all(configdirpath.clone()) {
-				Ok(_) => {},
-				Err(_) => { return Err(format!("Error creating path: {}", configdirpath)); }
+			if let Err(e) = std::fs::create_dir_all(configdirpath.clone()) {
+				Err(format!("Error creating path {}: {}", configdirpath, e))?
 			}
 
 			let exampleconf = include_str!("example.conf");
 
-			match std::fs::write(configpath.clone(), exampleconf) {
-				Ok(_) => exampleconf.to_string(),
-				Err(_) => { return Err(format!("Error creating config file: {}", configpath)); }
+			if let Err(e) = std::fs::write(configpath.clone(), exampleconf) {
+				Err(format!("Error creating config file {}: {}", configpath, e))?
 			}
+
+			exampleconf.to_string()
 		}
 	};
 

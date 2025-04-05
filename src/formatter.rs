@@ -269,7 +269,7 @@ fn parsefmti64(iter: &mut CharIterator, val: FmtGenInt64) -> Result<String, Stri
 		result %= moddivisor;
 	}
 
-	let resultstr = format!("{}", result);
+	let resultstr = result.to_string();
 
 	let len = match resultstr.find(|c: char| !c.is_digit(10)) {
 		Some(val) => val,

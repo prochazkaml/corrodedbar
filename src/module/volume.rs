@@ -15,11 +15,11 @@ impl modules::ModuleImplementation for Volume {
 			Err(_) => { return Err("Error getting default device".to_string()); }
 		};
 
-		Ok(Some(format!("{}", if dev.mute {
+		Ok(Some(if dev.mute {
 			"off".to_string()
 		} else {
 			dev.volume.get()[0].to_string().trim().to_string()
-		})))
+		}))
 	}
 }
 

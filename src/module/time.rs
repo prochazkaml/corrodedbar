@@ -8,7 +8,7 @@ struct Time {
 
 impl modules::ModuleImplementation for Time {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
-		Ok(Some(format!("{}", chrono::Local::now().format(&self.format))))
+		Ok(Some(chrono::Local::now().format(&self.format).to_string()))
 	}
 }
 
