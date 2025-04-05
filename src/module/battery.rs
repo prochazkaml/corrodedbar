@@ -17,6 +17,7 @@ impl Battery {
 		let icons = std::collections::HashMap::from([
 			("Charging".to_string(), "🔌"),
 			("Full".to_string(), "✔️"),
+			("Not charging".to_string(), "✔️"),
 			("Discharging".to_string(), "🔋")
 		]);
 
