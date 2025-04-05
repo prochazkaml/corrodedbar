@@ -12,10 +12,49 @@ struct Cpu {
 }
 
 impl Cpu {
-	fn gettemp(&self) -> Result<Option<f64>, String> {
-		let currtemp: f64 = utils::readlineas(&format!("{}", self.tempdevice))?;
+	fn trygettemp(&self) -> Result<Option<f64>, String> {
+		let currtemp: f64 = utils::readlineas(&self.tempdevice)?;
 
 		Ok(Some(currtemp))
+	}
+
+	fn tryfindtemp(&self) -> Result<Option<f64>, String> {
+		let dir = std::fs::read_dir("/sys/class/hwmon").map_err(|x| format!("{}", x))?;
+
+		for hwmon in dir {
+			let hwmon = hwmon.unwrap().path();
+			let hwmon = std::fs::read_dir(&hwmon).map_err(|x| format!("{}", x))?;
+
+			for temp in hwmon {
+				let path = temp.unwrap().path();
+				let path = path.to_str().unwrap();
+
+				if !path.ends_with("_label") { continue }
+
+				let Ok(label) = utils::readline(path) else { continue };
+
+				if label != self.tempdevice { continue }
+
+				let currtemp: f64 = utils::readlineas(&path.replace("_label", "_input"))?;
+
+				return Ok(Some(currtemp))
+			}
+		}
+
+		Err(format!("Could not find {}", &self.tempdevice))
+	}
+
+	fn gettemp(&self) -> Result<Option<f64>, String> {
+		match self.trygettemp() {
+			Ok(val) => Ok(val),
+			Err(err) => {
+				if let Ok(val) = self.tryfindtemp() {
+					return Ok(val)
+				}
+
+				Err(err)
+			}
+		}
 	}
 
 	fn getfreq(&self, proccpuinfo: String, highest: bool) -> Result<Option<f64>, String> {
