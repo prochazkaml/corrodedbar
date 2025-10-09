@@ -14,7 +14,7 @@ impl modules::ModuleImplementation for Bluetooth {
 			let file = libc::open("/dev/rfkill\0".as_ptr() as *const libc::c_char, libc::O_RDONLY);
 		
 			if file < 0 {
-				return Err("/dev/rfkill inaccessible".to_string());
+				Err("/dev/rfkill inaccessible".to_string())?
 			}
 
 			libc::fcntl(file, libc::F_SETFL, libc::O_NONBLOCK);
@@ -25,16 +25,16 @@ impl modules::ModuleImplementation for Bluetooth {
 				let read = libc::read(file, event.as_mut_ptr() as *mut libc::c_void, 8);
 
 				if read <= 0 && *libc::__errno_location() == libc::EAGAIN {
-					break;
+					break
 				}
 
 				if event[4] != 2 { // Not bluetooth
-					continue;
+					continue
 				}
 
 				if event[6] == 0 && event[7] == 0 { // Soft & hard unblocked
 					isenabled = true;
-					break;
+					break
 				}
 			}
 
@@ -42,7 +42,7 @@ impl modules::ModuleImplementation for Bluetooth {
 		}
 
 		return if isenabled {
-			Ok(Some(self.enabled.clone()))
+			Ok(Some(self.enabled.to_string()))
 		} else {
 			Ok(None)
 		}

@@ -34,9 +34,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 	let mut signalids: Vec<i32> = Vec::new();
 
 	for i in 0..modules.len() {
-		match modules[i].unixsignal {
-			Some(val) => signalids.push(val as i32),
-			_ => {}
+		if let Some(val) = modules[i].unixsignal {
+			signalids.push(val as i32);
 		}
 	}
 
@@ -48,11 +47,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 		// Check if the config file has been modified
 		
 		if !params.noautoreload && oldconfigmtime.len() > 0 {
-			match config::getconfigfilemtime() {
-				Ok(val) => if val != oldconfigmtime {
-					return;
-				},
-				_ => {}
+			if let Ok(val) = config::getconfigfilemtime() {
+				if val != oldconfigmtime { return }
 			}
 		}
 
@@ -60,11 +56,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 
 		for signal in signals.pending() {
 			for i in 0..modules.len() {
-				match modules[i].unixsignal {
-					Some(val) => if val as i32 == signal {
-						interrupts[i] = true;
-					},
-					_ => {}
+				if modules[i].unixsignal == Some(signal as u8) {
+					interrupts[i] = true;
 				}
 			}
 
@@ -76,7 +69,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 		let mut elapsed = start.elapsed();
 
 		for i in 0..modules.len() {
-			if elapsed < counters[i] && !interrupts[i] { continue; }
+			if elapsed < counters[i] && !interrupts[i] { continue }
 
 			if params.verbose {
 				println!("Running module {}.", &modules[i].name);
@@ -84,11 +77,11 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 
 			strings[i] = match modules[i].module.run(counters[i]) {
 				Ok(val) => val,
-				Err(errmsg) => {
+				Err(err) => {
 					if params.verbose {
-						println!(" -> {}", errmsg);
+						println!(" -> {}", err);
 					}
-					Some(errmsg)
+					Some(err)
 				}
 			};
 
@@ -104,23 +97,17 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 		let mut output = leftpad.to_string();
 
 		for i in 0..strings.len() {
-			match &strings[i] {
-				Some(val) => {
-					match &modules[i].icon {
-						Some(val) => {
-							output += &val;
-							output += " ";
-						},
-						None => {}
-					}
+			if let Some(val) = &strings[i] {
+				if let Some(val) = &modules[i].icon {
+					output += &val;
+					output += " ";
+				}
 
-					output += val;
+				output += val;
 
-					if i < strings.len() - 1 {
-						output += &delim;
-					}
-				},
-				None => {}
+				if i < strings.len() - 1 {
+					output += &delim;
+				}
 			}
 		}
 

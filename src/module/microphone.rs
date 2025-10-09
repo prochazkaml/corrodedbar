@@ -12,15 +12,13 @@ struct Microphone {
 
 impl modules::ModuleImplementation for Microphone {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
-		let apps = match self.handler.list_applications() {
-			Ok(val) => val,
-			Err(_) => { return Err("PulseAudio error".to_string()); }
-		};
+		let apps = self.handler.list_applications()
+			.map_err(|e| format!("PulseAudio error: {}", e))?;
 
 		if apps.len() <= 0 {
 			return Ok(None);
 		} else {
-			return Ok(Some(self.active.clone()));
+			return Ok(Some(self.active.to_string()));
 		}
 	}
 }
@@ -28,10 +26,8 @@ impl modules::ModuleImplementation for Microphone {
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	Ok(Box::new(Microphone {
 		active: configoptional!(config, "_active", "active".to_string()),
-		handler: match SourceController::create() {
-			Ok(val) => val,
-			Err(_) => { return Err("PulseAudio connection error".to_string()) }
-		}
+		handler: SourceController::create()
+			.map_err(|e| format!("PulseAudio connection error: {}", e))?
 	}))
 }
 

@@ -19,28 +19,33 @@ fn ipv4_format(ip: u32, mask: u32) -> String {
 	)
 }
 
+fn get_addrlist<T: Any>(dev: T) -> Option<Vec<Vec<u32>>> {
+	let Ok(cfg) = dev.ip4_config() else { None? };
+	
+	let Ok(addrlist) = cfg.addresses() else { None? };
+
+	Some(addrlist)
+}
+
 impl modules::ModuleImplementation for Network {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
 		let mut ips: Vec<String> = Vec::new();
 
 		let nm = NetworkManager::new(&self.dbus);
 
-		let devices = match nm.get_devices() {
-			Ok(val) => val,
-			Err(_) => { return Ok(None); }
+		let Ok(devices) = nm.get_devices() else {
+			return Ok(None)
 		};
 
 		for device in devices {
 			let deviplist = match device {
-				Device::WiFi(wifi) => match wifi.ip4_config() {
-					Ok(cfg) => match cfg.addresses() { Ok(addrlist) => addrlist, Err(_) => { continue; }},
-					Err(_) => { continue; }
-				},
-				Device::Ethernet(eth) => match eth.ip4_config() {
-					Ok(cfg) => match cfg.addresses() { Ok(addrlist) => addrlist, Err(_) => { continue; }},
-					Err(_) => { continue; }
-				}
-				_ => { continue; } // TODO - other interfaces, IPv6
+				Device::WiFi(wifi) => get_addrlist(wifi),
+				Device::Ethernet(eth) => get_addrlist(eth),
+				_ => None // TODO - other interfaces, IPv6
+			};
+
+			let Some(deviplist) = deviplist else {
+				continue
 			};
 
 			for ip in &deviplist {
@@ -62,17 +67,15 @@ impl modules::ModuleImplementation for Network {
 			}
 		}
 
-		return Ok(Some(output));
+		return Ok(Some(output))
 	}
 }
 
 pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	// TODO - specific connection
 	
-	let dbus = match dbus::blocking::Connection::new_system() {
-		Ok(val) => val,
-		Err(_) => { return Err("D-Bus conn error".to_string()); }
-	};
+	let dbus = dbus::blocking::Connection::new_system()
+		.map_err(|e| format!("D-Bus conn error: {}", e))?;
 
 	Ok(Box::new(Network {
 		dbus

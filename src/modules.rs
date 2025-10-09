@@ -5,12 +5,7 @@ use std::time::Duration;
 #[macro_export]
 macro_rules! configmandatory {
 	($from:ident, $idx:literal) => {
-		match config::getkeyvalueas($from, $idx) {
-			Some(val) => val,
-			None => {
-				return Err(format!("Error: {} not defined in the config", $idx));
-			}
-		}
+		config::getkeyvalueas($from, $idx).ok_or_else(|| format!("Error: {} not defined in the config", $idx))?
 	}
 }
 
@@ -58,11 +53,8 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 
 	let mut loadedmodules: Vec<ModuleRuntime> = Vec::new();
 
-	let cfgmodulesstr = match config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") {
-		Some(val) => val,
-		None => {
-			return Err("There are no modules to load - module [general] must contain a list of modules to enable.".to_string());
-		}
+	let Some(cfgmodulesstr) = config::getkeyvalue(config::getmodule(config, "general").unwrap(), "modules") else {
+		Err("There are no modules to load - module [general] must contain a list of modules to enable.".to_string())?
 	};
 
 	let enabledmodules: Vec<&str> = cfgmodulesstr.split_whitespace().collect();
@@ -70,20 +62,14 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 	for (i, name) in enabledmodules.iter().enumerate() {
 		println!("[{}/{}] Initializing module {}", i + 1, enabledmodules.len(), name);
 
-		let modsettings = match config::getmodule(&config, name) {
-			Some(val) => val,
-			None => {
-				println!(" -> module is not configured at all, skipping");
-				continue;
-			}
+		let Some(modsettings) = config::getmodule(&config, name) else {
+			println!(" -> module is not configured at all, skipping");
+			continue
 		};
 
-		let implem = match config::getkeyvalue(&modsettings, "implements") {
-			Some(val) => val,
-			None => {
-				println!(" -> module does not contain an \"implements\" param, skipping");
-				continue;
-			}
+		let Some(implem) = config::getkeyvalue(&modsettings, "implements") else {
+			println!(" -> module does not contain an \"implements\" param, skipping");
+			continue
 		};
 
 		let mut moduleinit: Option<&ModuleInitFun> = None;
@@ -94,12 +80,9 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 			}
 		}
 
-		let moduleinit = match moduleinit {
-			Some(val) => val,
-			None => {
-				println!(" -> could not find an implementation for {}, skipping", implem);
-				continue;
-			}
+		let Some(moduleinit) = moduleinit else {
+			println!(" -> could not find an implementation for {}, skipping", implem);
+			continue
 		};
 
 		let interval: u64 = config::getkeyvaluedefaultas(&modsettings, "interval", 1000);
@@ -108,8 +91,8 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 		match moduleinit(&modsettings) {
 			Ok(val) => loadedmodules.push(ModuleRuntime {
 				module: val,
-				name: implem,
-				icon: config::getkeyvalue(&modsettings, "icon"),
+				name: implem.to_string(),
+				icon: config::getkeyvalue(&modsettings, "icon").map(|x| x.to_string()),
 				unixsignal: config::getkeyvalueas(&modsettings, "unixsignal"),
 				interval: Duration::from_millis(interval),
 				startdelay: Duration::from_millis(startdelay)
@@ -118,10 +101,10 @@ pub fn init(config: &Vec<config::ConfigModule>) -> Result<Vec<ModuleRuntime>, St
 		}
 	}
 
-	return Ok(loadedmodules);
+	Ok(loadedmodules)
 }
 
 pub fn internalerrormsg() -> String {
-	return "Internal error".to_string();
+	"Internal error".to_string()
 }
 

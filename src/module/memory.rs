@@ -3,37 +3,31 @@ use crate::modules;
 use crate::formatter;
 use crate::fmtopt;
 use crate::configoptional;
+use crate::utils;
 
 struct Memory {
 	format: String
 }
 
 fn getmeminfo(total: f64, free: f64, percentage: bool, calculateused: bool) -> Result<Option<f64>, String> {
-	if free >= 0.0 && total > 0.0 {
-		if calculateused {
-			if percentage {
-				Ok(Some((total - free) / total))
-			} else {
-				Ok(Some(total - free))
-			}
-		} else {
-			if percentage {
-				Ok(Some(free / total))
-			} else {
-				Ok(Some(free))
-			}
-		}
-	} else {
-		Ok(None)
-	}
+	if free < 0.0 || total <= 0.0 { return Ok(None) }
+
+	let val = match calculateused {
+		true => total - free,
+		false => free
+	};
+
+	let val = match percentage {
+		true => val / total,
+		false => val
+	};
+
+	Ok(Some(val))
 }
 
 impl modules::ModuleImplementation for Memory {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
-		let file = match std::fs::read_to_string("/proc/meminfo") {
-			Ok(val) => val,
-			Err(errmsg) => { return Err(format!("File read error: {}", errmsg)); }
-		};
+		let file = utils::readstring("/proc/meminfo")?;
 
 		let lines = file.lines();
 
@@ -46,34 +40,26 @@ impl modules::ModuleImplementation for Memory {
 		for line in lines {
 			let split: Vec<&str> = line.split_whitespace().collect();
 
-			if split.len() != 3 { continue; }
+			if split.len() != 3 { continue }
 
 			if split[0] == "MemTotal:" {
-				total = match split[1].parse::<f64>() {
-					Ok(val) => val,
-					Err(_) => { return Err("Format error".to_string()); }
-				}
+				total = split[1].parse::<f64>()
+					.map_err(|e| format!("Format error at MemTotal: {}", e))?
 			}
 
 			if split[0] == "MemAvailable:" {
-				free = match split[1].parse::<f64>() {
-					Ok(val) => val,
-					Err(_) => { return Err("Format error".to_string()); }
-				}
+				free = split[1].parse::<f64>()
+					.map_err(|e| format!("Format error at MemAvailable: {}", e))?
 			}
 
 			if split[0] == "SwapTotal:" {
-				swaptotal = match split[1].parse::<f64>() {
-					Ok(val) => val,
-					Err(_) => { return Err("Format error".to_string()); }
-				}
+				swaptotal = split[1].parse::<f64>()
+					.map_err(|e| format!("Format error at SwapTotal: {}", e))?
 			}
 
 			if split[0] == "SwapFree:" {
-				swapfree = match split[1].parse::<f64>() {
-					Ok(val) => val,
-					Err(_) => { return Err("Format error".to_string()); }
-				}
+				swapfree = split[1].parse::<f64>()
+					.map_err(|e| format!("Format error at SwapFree: {}", e))?
 			}
 		}
 

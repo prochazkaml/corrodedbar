@@ -45,19 +45,20 @@ impl Cpu {
 	}
 
 	fn gettemp(&self) -> Result<Option<f64>, String> {
-		match self.trygettemp() {
-			Ok(val) => Ok(val),
-			Err(err) => {
-				if let Ok(val) = self.tryfindtemp() {
-					return Ok(val)
-				}
+		let attempt = self.trygettemp();
 
-				Err(err)
-			}
+		if let Ok(val) = attempt {
+			return Ok(val)
 		}
+
+		if let Ok(val) = self.tryfindtemp() {
+			return Ok(val)
+		}
+
+		attempt
 	}
 
-	fn getfreq(&self, proccpuinfo: String, highest: bool) -> Result<Option<f64>, String> {
+	fn getfreq(&self, proccpuinfo: &str, highest: bool) -> Result<Option<f64>, String> {
 		let lines = proccpuinfo.lines();
 
 		let default: f64 = if highest { 0.0 } else { 1000000.0 };
@@ -67,32 +68,29 @@ impl Cpu {
 		for line in lines {
 			let split: Vec<&str> = line.split_whitespace().collect();
 
-			if split.len() != 4 { continue; }
-			
+			if split.len() != 4 { continue }
+
 			if split[0] == "cpu" && split[1] == "MHz" {
-				let freq = match split[3].parse::<f64>() {
-					Ok(val) => val,
-					Err(_) => { continue; }
+				let Ok(freq) = split[3].parse::<f64>() else {
+					continue
 				};
-				
+
 				if (freq > target && highest) || (freq < target && !highest) {
 					target = freq;
 				}
 			}
 		}
-		
-		Ok(if target != default {
-			Some(target)
-		} else {
-			None
-		})
+
+		if target == default { return Ok(None) }
+
+		Ok(Some(target))
 	}
 
-	fn gethighestfreq(&self, proccpuinfo: String) -> Result<Option<f64>, String> {
+	fn gethighestfreq(&self, proccpuinfo: &str) -> Result<Option<f64>, String> {
 		self.getfreq(proccpuinfo, true)
 	}
 
-	fn getlowestfreq(&self, proccpuinfo: String) -> Result<Option<f64>, String> {
+	fn getlowestfreq(&self, proccpuinfo: &str) -> Result<Option<f64>, String> {
 		self.getfreq(proccpuinfo, false)
 	}
 }
@@ -104,8 +102,8 @@ impl modules::ModuleImplementation for Cpu {
 		formatter::format(&self.format, |tag| {
 			match tag {
 				't' => fmtopt!(f64 self.gettemp(), "[d1000 p1]"),
-				'F' => fmtopt!(f64 self.gethighestfreq(proccpuinfo.clone())),
-				'f' => fmtopt!(f64 self.getlowestfreq(proccpuinfo.clone())),
+				'F' => fmtopt!(f64 self.gethighestfreq(&proccpuinfo)),
+				'f' => fmtopt!(f64 self.getlowestfreq(&proccpuinfo)),
 				_ => Ok(None)
 			}
 		})

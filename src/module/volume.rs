@@ -10,24 +10,21 @@ struct Volume {
 
 impl modules::ModuleImplementation for Volume {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
-		let dev = match self.handler.get_default_device() {
-			Ok(val) => val,
-			Err(_) => { return Err("Error getting default device".to_string()); }
+		let dev = self.handler.get_default_device()
+			.map_err(|e| format!("Error getting default device: {}", e))?;
+
+		let val = match dev.mute {
+			true => "off".to_string(),
+			false => dev.volume.get()[0].to_string().trim().to_string()
 		};
 
-		Ok(Some(if dev.mute {
-			"off".to_string()
-		} else {
-			dev.volume.get()[0].to_string().trim().to_string()
-		}))
+		Ok(Some(val))
 	}
 }
 
 pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	let handler = match SinkController::create() {
-		Ok(val) => val,
-		Err(_) => { return Err("PulseAudio conn error".to_string()); }
-	};
+	let handler = SinkController::create()
+		.map_err(|e| format!("PulseAudio conn error: {}", e))?;
 
 	Ok(Box::new(Volume {
 		handler
