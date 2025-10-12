@@ -16,39 +16,39 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 
 	let start = Instant::now();
 
-	let general = config::getmodule(config, "general").unwrap();
+	let general = config::get_module(config, "general").unwrap();
 
 	let defaults: Vec<&'static str> = vec![" ", " ", "  "];
 
-	let leftpad = config::getkeyvaluedefault(general, "leftpad", defaults[0]);
-	let rightpad = config::getkeyvaluedefault(general, "rightpad", defaults[1]);
-	let delim = config::getkeyvaluedefault(general, "delim", defaults[2]);
+	let left_pad = config::get_key_value_default(general, "leftpad", defaults[0]);
+	let right_pad = config::get_key_value_default(general, "rightpad", defaults[1]);
+	let delim = config::get_key_value_default(general, "delim", defaults[2]);
 
-	let mut lastoutput = "".to_string();
+	let mut last_output = "".to_string();
 
-	let maxdelay: Duration = match config::getkeyvalueas(general, "maxinterval") as Option<u64> {
+	let max_delay: Duration = match config::get_key_value_as(general, "maxinterval") as Option<u64> {
 		Some(val) => Duration::from_millis(val),
 		None => Duration::MAX
 	};
 
-	let mut signalids: Vec<i32> = Vec::new();
+	let mut signal_ids: Vec<i32> = Vec::new();
 
 	for module in modules.iter() {
 		if let Some(val) = module.unixsignal {
-			signalids.push(val as i32);
+			signal_ids.push(val as i32);
 		}
 	}
 
-	let mut signals = Signals::new(signalids).unwrap();
+	let mut signals = Signals::new(signal_ids).unwrap();
 
-	let oldconfigmtime = config::getkeyvaluedefault(general, "configmtime", "");
+	let old_config_mtime = config::get_key_value_default(general, "configmtime", "");
 
 	loop {
 		// Check if the config file has been modified
 		
-		if !params.noautoreload && !oldconfigmtime.is_empty() {
-			if let Ok(val) = config::getconfigfilemtime() {
-				if val != oldconfigmtime { return }
+		if !params.noautoreload && !old_config_mtime.is_empty() {
+			if let Ok(val) = config::get_config_file_mtime() {
+				if val != old_config_mtime { return }
 			}
 		}
 
@@ -94,7 +94,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 
 		// Generate the output string
 		
-		let mut output = leftpad.to_string();
+		let mut output = left_pad.to_string();
 
 		for i in 0..strings.len() {
 			if let Some(val) = &strings[i] {
@@ -111,30 +111,30 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 			}
 		}
 
-		output += rightpad;
+		output += right_pad;
 
-		if output != lastoutput {
-			wm::setrootname(&output);
-			lastoutput = output;
+		if output != last_output {
+			wm::set_root_name(&output);
+			last_output = output;
 		}
 
 		// Figure out how much we have to sleep for
 		
-		let mut leastsleep = Duration::MAX;
+		let mut least_sleep = Duration::MAX;
 
 		for counter in &counters {
-			if *counter < leastsleep {
-				leastsleep = *counter;
+			if *counter < least_sleep {
+				least_sleep = *counter;
 			}
 		}
 
 		elapsed = start.elapsed();
 
-		if leastsleep > elapsed {
-			let mut sleep = leastsleep - elapsed;
+		if least_sleep > elapsed {
+			let mut sleep = least_sleep - elapsed;
 
-			if sleep > maxdelay {
-				sleep = maxdelay;
+			if sleep > max_delay {
+				sleep = max_delay;
 			}
 
 			if params.verbose {

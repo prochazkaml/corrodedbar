@@ -2,23 +2,23 @@ use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::formatter;
-use crate::fmtopt;
-use crate::configmandatory;
-use crate::configoptional;
+use crate::fmt_opt;
+use crate::config_mandatory;
+use crate::config_optional;
 
 struct Cpu {
-	tempdevice: String,
+	temp_device: String,
 	format: String
 }
 
 impl Cpu {
-	fn trygettemp(&self) -> Result<Option<f64>, String> {
-		let currtemp: f64 = utils::readlineas(&self.tempdevice)?;
+	fn try_get_temp(&self) -> Result<Option<f64>, String> {
+		let curr_temp: f64 = utils::read_line_as(&self.temp_device)?;
 
-		Ok(Some(currtemp))
+		Ok(Some(curr_temp))
 	}
 
-	fn tryfindtemp(&self) -> Result<Option<f64>, String> {
+	fn try_find_temp(&self) -> Result<Option<f64>, String> {
 		let dir = std::fs::read_dir("/sys/class/hwmon").map_err(|x| x.to_string())?;
 
 		for hwmon in dir {
@@ -31,35 +31,35 @@ impl Cpu {
 
 				if !path.ends_with("_label") { continue }
 
-				let Ok(label) = utils::readline(path) else { continue };
+				let Ok(label) = utils::read_line(path) else { continue };
 
-				if label != self.tempdevice { continue }
+				if label != self.temp_device { continue }
 
-				let currtemp: f64 = utils::readlineas(&path.replace("_label", "_input"))?;
+				let currtemp: f64 = utils::read_line_as(&path.replace("_label", "_input"))?;
 
 				return Ok(Some(currtemp))
 			}
 		}
 
-		Err(format!("Could not find {}", &self.tempdevice))
+		Err(format!("Could not find {}", &self.temp_device))
 	}
 
-	fn gettemp(&self) -> Result<Option<f64>, String> {
-		let attempt = self.trygettemp();
+	fn get_temp(&self) -> Result<Option<f64>, String> {
+		let attempt = self.try_get_temp();
 
 		if let Ok(val) = attempt {
 			return Ok(val)
 		}
 
-		if let Ok(val) = self.tryfindtemp() {
+		if let Ok(val) = self.try_find_temp() {
 			return Ok(val)
 		}
 
 		attempt
 	}
 
-	fn getfreq(&self, proccpuinfo: &str, highest: bool) -> Result<Option<f64>, String> {
-		let lines = proccpuinfo.lines();
+	fn get_freq(&self, proc_cpu_info: &str, highest: bool) -> Result<Option<f64>, String> {
+		let lines = proc_cpu_info.lines();
 
 		let default: f64 = if highest { 0.0 } else { 1000000.0 };
 
@@ -86,24 +86,24 @@ impl Cpu {
 		Ok(Some(target))
 	}
 
-	fn gethighestfreq(&self, proccpuinfo: &str) -> Result<Option<f64>, String> {
-		self.getfreq(proccpuinfo, true)
+	fn get_highest_freq(&self, proc_cpu_info: &str) -> Result<Option<f64>, String> {
+		self.get_freq(proc_cpu_info, true)
 	}
 
-	fn getlowestfreq(&self, proccpuinfo: &str) -> Result<Option<f64>, String> {
-		self.getfreq(proccpuinfo, false)
+	fn get_lowest_freq(&self, proc_cpu_info: &str) -> Result<Option<f64>, String> {
+		self.get_freq(proc_cpu_info, false)
 	}
 }
 
 impl modules::ModuleImplementation for Cpu {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
-		let proccpuinfo = utils::readstring("/proc/cpuinfo")?;
+		let proc_cpu_info = utils::read_string("/proc/cpuinfo")?;
 
 		formatter::format(&self.format, |tag| {
 			match tag {
-				't' => fmtopt!(f64 self.gettemp(), "[d1000 p1]"),
-				'F' => fmtopt!(f64 self.gethighestfreq(&proccpuinfo)),
-				'f' => fmtopt!(f64 self.getlowestfreq(&proccpuinfo)),
+				't' => fmt_opt!(f64 self.get_temp(), "[d1000 p1]"),
+				'F' => fmt_opt!(f64 self.get_highest_freq(&proc_cpu_info)),
+				'f' => fmt_opt!(f64 self.get_lowest_freq(&proc_cpu_info)),
 				_ => Ok(None)
 			}
 		})
@@ -112,8 +112,8 @@ impl modules::ModuleImplementation for Cpu {
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	Ok(Box::new(Cpu {
-		tempdevice: configmandatory!(config, "_tempdevice"),
-		format: configoptional!(config, "_format", "%t°C %F MHz".to_string())
+		temp_device: config_mandatory!(config, "_tempdevice"),
+		format: config_optional!(config, "_format", "%t°C %F MHz".to_string())
 	}))
 }
 

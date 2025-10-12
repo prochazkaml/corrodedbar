@@ -1,6 +1,6 @@
 use crate::config;
 use crate::modules;
-use crate::configoptional;
+use crate::config_optional;
 
 struct Bluetooth {
 	enabled: String
@@ -8,7 +8,7 @@ struct Bluetooth {
 
 impl modules::ModuleImplementation for Bluetooth {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
-		let mut isenabled = false;
+		let mut is_enabled = false;
 
 		unsafe {
 			let file = libc::open(c"/dev/rfkill".as_ptr(), libc::O_RDONLY);
@@ -33,7 +33,7 @@ impl modules::ModuleImplementation for Bluetooth {
 				}
 
 				if event[6] == 0 && event[7] == 0 { // Soft & hard unblocked
-					isenabled = true;
+					is_enabled = true;
 					break
 				}
 			}
@@ -41,13 +41,13 @@ impl modules::ModuleImplementation for Bluetooth {
 			libc::close(file);
 		}
 
-		Ok(isenabled.then(|| self.enabled.to_string()))
+		Ok(is_enabled.then(|| self.enabled.to_string()))
 	}
 }
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	Ok(Box::new(Bluetooth {
-		enabled: configoptional!(config, "_enabled", "Enabled".to_string())
+		enabled: config_optional!(config, "_enabled", "Enabled".to_string())
 	}))
 }
 

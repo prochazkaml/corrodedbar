@@ -10,7 +10,7 @@ pub struct ConfigModule {
 	pub settings: Vec<ConfigKeyValue>
 }
 
-pub fn getmodule<'a>(cfg: &'a Vec<ConfigModule>, name: &str) -> Option<&'a Vec<ConfigKeyValue>> {
+pub fn get_module<'a>(cfg: &'a Vec<ConfigModule>, name: &str) -> Option<&'a Vec<ConfigKeyValue>> {
 	for module in cfg {
 		if module.name == name { return Some(&module.settings); }
 	}
@@ -18,7 +18,7 @@ pub fn getmodule<'a>(cfg: &'a Vec<ConfigModule>, name: &str) -> Option<&'a Vec<C
 	None
 }
 
-pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<&'a str> {
+pub fn get_key_value<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<&'a str> {
 	for keyvalue in module {
 		if keyvalue.key == key { return Some(&keyvalue.value); }
 	}
@@ -26,48 +26,48 @@ pub fn getkeyvalue<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<&'a
 	None
 }
 
-pub fn getkeyvaluedefault<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &'a str) -> &'a str {
-	getkeyvalue(module, key).unwrap_or(default)
+pub fn get_key_value_default<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &'a str) -> &'a str {
+	get_key_value(module, key).unwrap_or(default)
 }
 
-pub fn getkeyvalueas<T>(module: &Vec<ConfigKeyValue>, key: &str) -> Option<T>
+pub fn get_key_value_as<T>(module: &Vec<ConfigKeyValue>, key: &str) -> Option<T>
 	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
-	Some(getkeyvalue(module, key)?.parse::<T>().unwrap())
+	Some(get_key_value(module, key)?.parse::<T>().unwrap())
 }
 
-pub fn getkeyvaluedefaultas<T>(module: &Vec<ConfigKeyValue>, key: &str, default: T) -> T
+pub fn get_key_value_default_as<T>(module: &Vec<ConfigKeyValue>, key: &str, default: T) -> T
 	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
 
-	getkeyvalueas(module, key).unwrap_or(default)
+	get_key_value_as(module, key).unwrap_or(default)
 }
 
-fn getxdgconfigpath() -> Option<String> {
+fn get_xdg_config_path() -> Option<String> {
 	std::env::var_os("XDG_CONFIG_HOME")?.into_string().ok()
 }
 
-fn getfakexdgconfigpath() -> Option<String> {
+fn get_fake_xdg_config_path() -> Option<String> {
 	Some(std::env::var_os("XDG_CONFIG_HOME")?.into_string().ok()? + "/.config")
 }
 
-fn getgeneralconfigpath() -> Option<String> {
+fn get_general_config_path() -> Option<String> {
 	// Try the official XDG config path, if that fails, fall back to $HOME/.config
 
-	getxdgconfigpath().or_else(getfakexdgconfigpath)
+	get_xdg_config_path().or_else(get_fake_xdg_config_path)
 }
 
-fn getconfigpath() -> Option<String> {
-	Some(getgeneralconfigpath()? + "/corrodedbar")
+fn get_config_path() -> Option<String> {
+	Some(get_general_config_path()? + "/corrodedbar")
 }
 
-pub fn getconfigfilemtime() -> Result<String, String> {
-	let Some(configdirpath) = getconfigpath() else {
+pub fn get_config_file_mtime() -> Result<String, String> {
+	let Some(config_dir_path) = get_config_path() else {
 		Err("Could not determine the config directory. Make sure $HOME is set.".to_string())?
 	};
 
-	let configpath = configdirpath + "/main.conf";
+	let config_path = config_dir_path + "/main.conf";
 
-	let metadata = std::fs::metadata(configpath)
+	let metadata = std::fs::metadata(config_path)
 		.map_err(|e| format!("Error fetching config file metadata: {}", e))?;
 
 	let modified = metadata.modified()
@@ -80,33 +80,33 @@ pub fn getconfigfilemtime() -> Result<String, String> {
 	Ok(mtime)
 }
 
-pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
-	let Some(configdirpath) = getconfigpath() else {
+pub fn load_config() -> Result<Vec<ConfigModule>, String> {
+	let Some(config_dir_path) = get_config_path() else {
 		Err("Could not determine the config directory. Make sure $HOME is set.".to_string())?
 	};
 
-	let configpath = format!("{}/main.conf", &configdirpath);
+	let config_path = format!("{}/main.conf", &config_dir_path);
 
-	let configcontents = utils::readstring(&configpath).or_else(|_| {
-		if let Err(e) = std::fs::create_dir_all(&configdirpath) {
-			Err(format!("Error creating path {}: {}", configdirpath, e))?
+	let config_contents = utils::read_string(&config_path).or_else(|_| {
+		if let Err(e) = std::fs::create_dir_all(&config_dir_path) {
+			Err(format!("Error creating path {}: {}", config_dir_path, e))?
 		}
 
 		let exampleconf = include_str!("example.conf");
 
-		if let Err(e) = std::fs::write(&configpath, exampleconf) {
-			Err(format!("Error creating config file {}: {}", configpath, e))?
+		if let Err(e) = std::fs::write(&config_path, exampleconf) {
+			Err(format!("Error creating config file {}: {}", config_path, e))?
 		}
 
 		Ok::<String, String>(exampleconf.to_string())
 	})?;
 
-	let configlines = configcontents.lines();
+	let config_lines = config_contents.lines();
 
-	let mut foundgeneral: bool = false;
+	let mut found_general: bool = false;
 	let mut output: Vec<ConfigModule> = Vec::new();
 
-	for (linenum, line) in configlines.enumerate() {
+	for (linenum, line) in config_lines.enumerate() {
 		if line.is_empty() { continue }
 
 		// Ignore comment lines
@@ -116,17 +116,17 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 		// Check for module name tag (eg. "[network]")
 
 		if line.starts_with('[') && line.ends_with(']') {
-			let newmodule = line[1..line.len()-1].to_string();
+			let new_module = line[1..line.len()-1].to_string();
 
 			let mut module = ConfigModule {
-				name: newmodule,
+				name: new_module,
 				settings: Vec::new()
 			};
 			
 			if &module.name == "general" {
-				foundgeneral = true;
+				found_general = true;
 
-				if let Ok(val) = getconfigfilemtime() {
+				if let Ok(val) = get_config_file_mtime() {
 					module.settings.push(ConfigKeyValue {
 						key: "configmtime".to_string(),
 						value: val
@@ -145,12 +145,12 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 			Err(format!("Syntax error at line {}: expected key/value pair", linenum + 1))?
 		};
 
-		let mut valuetrim = value.trim();
+		let mut value_trim = value.trim();
 
-		if valuetrim.is_empty() { continue }
+		if value_trim.is_empty() { continue }
 
-		if valuetrim.starts_with('"') && valuetrim.ends_with('"') {
-			valuetrim = &valuetrim[1..valuetrim.len()-1];
+		if value_trim.starts_with('"') && value_trim.ends_with('"') {
+			value_trim = &value_trim[1..value_trim.len()-1];
 		}
 
 		if output.is_empty() {
@@ -159,11 +159,11 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 
 		output.last_mut().unwrap().settings.push(ConfigKeyValue {
 			key: key.trim().to_string(),
-			value: valuetrim.to_string()
+			value: value_trim.to_string()
 		});
 	}
 
-	if !foundgeneral {
+	if !found_general {
 		Err("The config file is missing the [general] module.".to_string())?
 	}
 

@@ -23,9 +23,9 @@ fn ipv4_format(ip: u32, mask: u32) -> String {
 fn get_addrlist<T: Any>(dev: T) -> Option<Vec<Vec<u32>>> {
 	let Ok(cfg) = dev.ip4_config() else { None? };
 	
-	let Ok(addrlist) = cfg.addresses() else { None? };
+	let Ok(addr_list) = cfg.addresses() else { None? };
 
-	Some(addrlist)
+	Some(addr_list)
 }
 
 impl modules::ModuleImplementation for Network {
@@ -39,19 +39,17 @@ impl modules::ModuleImplementation for Network {
 		};
 
 		for device in devices {
-			let deviplist = match device {
+			let ip_list = match device {
 				Device::WiFi(wifi) => get_addrlist(wifi),
 				Device::Ethernet(eth) => get_addrlist(eth),
 				_ => None // TODO - other interfaces, IPv6
 			};
 
-			let Some(deviplist) = deviplist else {
+			let Some(ip_list) = ip_list else {
 				continue
 			};
 
-			for ip in &deviplist {
-				ips.push(ipv4_format(ip[0], ip[1]));
-			}
+			ips.extend(ip_list.iter().map(|ip| ipv4_format(ip[0], ip[1])));
 		}
 
 		Ok((!ips.is_empty()).then(|| ips.iter().join(" ")))

@@ -1,6 +1,6 @@
 use crate::config;
 use crate::modules;
-use crate::configoptional;
+use crate::config_optional;
 
 struct Time {
 	format: String
@@ -14,7 +14,7 @@ impl modules::ModuleImplementation for Time {
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	Ok(Box::new(Time {
-		format: configoptional!(config, "_format", "%H:%M".to_string())
+		format: config_optional!(config, "_format", "%H:%M".to_string())
 	}))
 }
 

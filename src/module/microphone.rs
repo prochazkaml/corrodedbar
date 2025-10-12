@@ -1,6 +1,6 @@
 use crate::config;
 use crate::modules;
-use crate::configoptional;
+use crate::config_optional;
 
 use pulsectl::controllers::SourceController;
 use pulsectl::controllers::AppControl;
@@ -21,7 +21,7 @@ impl modules::ModuleImplementation for Microphone {
 
 pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	Ok(Box::new(Microphone {
-		active: configoptional!(config, "_active", "active".to_string()),
+		active: config_optional!(config, "_active", "active".to_string()),
 		handler: SourceController::create()
 			.map_err(|e| format!("PulseAudio connection error: {}", e))?
 	}))

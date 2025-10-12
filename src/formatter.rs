@@ -1,5 +1,4 @@
 use crate::formatter;
-use crate::modules;
 
 type CharIterator<'a> = std::iter::Peekable<std::str::Chars<'a>>;
 
@@ -9,12 +8,12 @@ pub struct FmtGenString {
 
 pub struct FmtGenFloat64 {
 	pub val: f64,
-	pub defaultfmt: Option<String>
+	pub default_fmt: Option<String>
 }
 
 pub struct FmtGenInt64 {
 	pub val: i64,
-	pub defaultfmt: Option<String>
+	pub default_fmt: Option<String>
 }
 
 pub enum FormatGenerator {
@@ -24,10 +23,10 @@ pub enum FormatGenerator {
 }
 
 #[macro_export]
-macro_rules! fmtopt {
+macro_rules! fmt_opt {
 	($type:ident $val:expr, $other:expr) => {
 		match $val {
-			Ok(Some(val)) => Ok(Some(fmtopt!($type raw val, $other))),
+			Ok(Some(val)) => Ok(Some(fmt_opt!($type raw val, $other))),
 			Ok(None) => Ok(None),
 			Err(val) => Err(val)
 		}
@@ -35,7 +34,7 @@ macro_rules! fmtopt {
 
 	($type:ident $val:expr) => {
 		match $val {
-			Ok(Some(val)) => Ok(Some(fmtopt!($type raw val))),
+			Ok(Some(val)) => Ok(Some(fmt_opt!($type raw val))),
 			Ok(None) => Ok(None),
 			Err(val) => Err(val)
 		}
@@ -49,30 +48,30 @@ macro_rules! fmtopt {
 	(f64 raw $val:expr) => {
 		formatter::FormatGenerator::OutputFloat64(formatter::FmtGenFloat64 {
 			val: $val,
-			defaultfmt: None
+			default_fmt: None
 		})
 	};
 	(f64 raw $val:expr, $defaultfmt:literal) => {
 		formatter::FormatGenerator::OutputFloat64(formatter::FmtGenFloat64 {
 			val: $val,
-			defaultfmt: Some($defaultfmt.to_string())
+			default_fmt: Some($defaultfmt.to_string())
 		})
 	};
 	(i64 raw $val:expr) => {
 		formatter::FormatGenerator::OutputInt64(formatter::FmtGenInt64 {
 			val: $val,
-			defaultfmt: None
+			default_fmt: None
 		})
 	};
 	(i64 raw $val:expr, $defaultfmt:literal) => {
 		formatter::FormatGenerator::OutputInt64(formatter::FmtGenInt64 {
 			val: $val,
-			defaultfmt: Some($defaultfmt.to_string())
+			default_fmt: Some($defaultfmt.to_string())
 		})
 	};
 }
 
-macro_rules! fmtoptparam {
+macro_rules! fmt_opt_param {
 	($char:literal, $type:ident, $defaultval:literal) => {
 		formatter::FormatOptionParam {
 			id: $char,
@@ -82,9 +81,9 @@ macro_rules! fmtoptparam {
 }
 
 enum FormatOptionParamVal {
-	TypeFloat64(f64),
-	TypeInt64(i64),
-	TypeUsize(usize)
+	Float64(f64),
+	Int64(i64),
+	Usize(usize)
 }
 
 struct FormatOptionParam {
@@ -92,7 +91,7 @@ struct FormatOptionParam {
 	pub val: FormatOptionParamVal
 }
 
-macro_rules! handlefmtopt {
+macro_rules! handle_fmt_opt {
 	($enumtype:ident is $type:ty, $dest:ident = $src:ident) => {
 		if let Ok(val) = $src.parse::<$type>() {
 			$dest.val = FormatOptionParamVal::$enumtype(val); 
@@ -100,56 +99,56 @@ macro_rules! handlefmtopt {
 	}
 }
 
-fn setfmtoptparam(opts: &mut [FormatOptionParam], tagstr: &str) {
-	let mut tagchars = tagstr.chars();
+fn set_fmt_opt_param(opts: &mut [FormatOptionParam], tag: &str) {
+	let mut tag_chars = tag.chars();
 
-	let tag = tagchars.next().unwrap(); // We're sure that tagstr will be at least 1 char
-	let contents = tagchars.as_str();
+	let tag = tag_chars.next().unwrap(); // We're sure that tagstr will be at least 1 char
+	let contents = tag_chars.as_str();
 
 	for opt in opts {
 		if opt.id == tag {
 			match opt.val {
-				FormatOptionParamVal::TypeFloat64(_) => handlefmtopt!(TypeFloat64 is f64, opt = contents),
-				FormatOptionParamVal::TypeUsize(_) => handlefmtopt!(TypeUsize is usize, opt = contents),
-				FormatOptionParamVal::TypeInt64(_) => handlefmtopt!(TypeInt64 is i64, opt = contents)
+				FormatOptionParamVal::Float64(_) => handle_fmt_opt!(Float64 is f64, opt = contents),
+				FormatOptionParamVal::Usize(_) => handle_fmt_opt!(Usize is usize, opt = contents),
+				FormatOptionParamVal::Int64(_) => handle_fmt_opt!(Int64 is i64, opt = contents)
 			}
 		}
 	}
 }
 
-fn parsefmtoptparams(opts: &mut [FormatOptionParam], iter: &mut CharIterator) {
+fn parse_fmt_opt_params(opts: &mut [FormatOptionParam], iter: &mut CharIterator) {
 	if iter.peek() != Some(&'[') {
 		return
 	};
 
 	iter.next();
 
-	let mut currtag = String::new();
-	let mut shouldexit = false;
+	let mut curr_tag = String::new();
+	let mut should_exit = false;
 
 	loop {
 		let c = match iter.next() {
 			Some(']') | None => {
-				shouldexit = true;
+				should_exit = true;
 				' '
 			},
 			Some(val) => val
 		};
 
 		if c != ' ' {
-			currtag.push(c);
-		} else if !currtag.is_empty() {
-			setfmtoptparam(opts, &currtag);
-			currtag = String::new();
+			curr_tag.push(c);
+		} else if !curr_tag.is_empty() {
+			set_fmt_opt_param(opts, &curr_tag);
+			curr_tag = String::new();
 		}
 
-		if shouldexit {
+		if should_exit {
 			break
 		}
 	}
 }
 
-fn parsefmtf64(iter: &mut CharIterator, val: FmtGenFloat64) -> Result<String, String> {
+fn parse_fmt_f64(iter: &mut CharIterator, val: FmtGenFloat64) -> Result<String, String> {
 	/*
 	 * Float format syntax: `%T[dD pP zZ]`
 	 *   T = token
@@ -166,43 +165,35 @@ fn parsefmtf64(iter: &mut CharIterator, val: FmtGenFloat64) -> Result<String, St
 	let mut result = val.val;
 
 	let opts: &mut [FormatOptionParam] = &mut [
-		fmtoptparam!('d', TypeFloat64, 1.0),
-		fmtoptparam!('p', TypeUsize, 0),
-		fmtoptparam!('z', TypeUsize, 0)
+		fmt_opt_param!('d', Float64, 1.0),
+		fmt_opt_param!('p', Usize, 0),
+		fmt_opt_param!('z', Usize, 0)
 	];
 
-	if let Some(fmt) = &val.defaultfmt {
-		parsefmtoptparams(opts, &mut fmt.chars().peekable());
+	if let Some(fmt) = &val.default_fmt {
+		parse_fmt_opt_params(opts, &mut fmt.chars().peekable());
 	}
 
-	parsefmtoptparams(opts, iter);
+	parse_fmt_opt_params(opts, iter);
 
-	let FormatOptionParamVal::TypeFloat64(divisor) = opts[0].val else {
-		Err(modules::internalerrormsg())?
-	};
-
-	let FormatOptionParamVal::TypeUsize(decimals) = opts[1].val else {
-		Err(modules::internalerrormsg())?
-	};
-
-	let FormatOptionParamVal::TypeUsize(zeropad) = opts[2].val else {
-		Err(modules::internalerrormsg())?
-	};
+	let FormatOptionParamVal::Float64(divisor) = opts[0].val else { panic!() };
+	let FormatOptionParamVal::Usize(decimals) = opts[1].val else { panic!() };
+	let FormatOptionParamVal::Usize(zeropad) = opts[2].val else { panic!() };
 
 	result /= divisor;
 
-	let mut resultstr = format!("{:.decimals$}", result.abs(), decimals = decimals);
+	let mut result_str = format!("{:.decimals$}", result.abs(), decimals = decimals);
 
-	let len = resultstr.find(|c: char| !c.is_ascii_digit()).unwrap_or(resultstr.len());
+	let len = result_str.find(|c: char| !c.is_ascii_digit()).unwrap_or(result_str.len());
 
 	if len < zeropad {
-		resultstr = "0".repeat(zeropad - len) + &resultstr
+		result_str = "0".repeat(zeropad - len) + &result_str
 	}
 
-	Ok(resultstr)
+	Ok(result_str)
 }
 
-fn parsefmti64(iter: &mut CharIterator, val: FmtGenInt64) -> Result<String, String> {
+fn parse_fmt_i64(iter: &mut CharIterator, val: FmtGenInt64) -> Result<String, String> {
 	/*
 	 * Float format syntax: `%T[dD rR zZ]`
 	 *   T = token
@@ -217,53 +208,45 @@ fn parsefmti64(iter: &mut CharIterator, val: FmtGenInt64) -> Result<String, Stri
 	 */
 
 	let opts: &mut [FormatOptionParam] = &mut [
-		fmtoptparam!('d', TypeInt64, 1),
-		fmtoptparam!('r', TypeInt64, 0),
-		fmtoptparam!('z', TypeUsize, 0)
+		fmt_opt_param!('d', Int64, 1),
+		fmt_opt_param!('r', Int64, 0),
+		fmt_opt_param!('z', Usize, 0)
 	];
 
 	let mut result = val.val;
 
-	if let Some(fmt) = &val.defaultfmt {
-		parsefmtoptparams(opts, &mut fmt.chars().peekable());
+	if let Some(fmt) = &val.default_fmt {
+		parse_fmt_opt_params(opts, &mut fmt.chars().peekable());
 	}
 
-	parsefmtoptparams(opts, iter);
+	parse_fmt_opt_params(opts, iter);
 
-	let FormatOptionParamVal::TypeInt64(divisor) = opts[0].val else {
-		Err(modules::internalerrormsg())?
-	};
-
-	let FormatOptionParamVal::TypeInt64(moddivisor) = opts[1].val else {
-		Err(modules::internalerrormsg())?
-	};
-
-	let FormatOptionParamVal::TypeUsize(zeropad) = opts[2].val else {
-		Err(modules::internalerrormsg())?
-	};
+	let FormatOptionParamVal::Int64(divisor) = opts[0].val else { panic!() };
+	let FormatOptionParamVal::Int64(mod_divisor) = opts[1].val else { panic!() };
+	let FormatOptionParamVal::Usize(zeropad) = opts[2].val else { panic!() };
 
 	result /= divisor;
 
-	if moddivisor != 0 {
-		result %= moddivisor;
+	if mod_divisor != 0 {
+		result %= mod_divisor;
 	}
 
-	let mut resultstr = result.to_string();
+	let mut result_str = result.to_string();
 
-	let len = resultstr.find(|c: char| !c.is_ascii_digit()).unwrap_or(resultstr.len());
+	let len = result_str.find(|c: char| !c.is_ascii_digit()).unwrap_or(result_str.len());
 
 	if len < zeropad {
-		resultstr = "0".repeat(zeropad - len) + &resultstr
+		result_str = "0".repeat(zeropad - len) + &result_str
 	}
 
-	Ok(resultstr)
+	Ok(result_str)
 }
 
-fn parsefmtval(iter: &mut CharIterator, val: FormatGenerator) -> Result<String, String> {
+fn parse_fmt_val(iter: &mut CharIterator, val: FormatGenerator) -> Result<String, String> {
 	match val {
 		FormatGenerator::OutputString(val) => Ok(val.val),
-		FormatGenerator::OutputFloat64(val) => parsefmtf64(iter, val),
-		FormatGenerator::OutputInt64(val) => parsefmti64(iter, val)
+		FormatGenerator::OutputFloat64(val) => parse_fmt_f64(iter, val),
+		FormatGenerator::OutputInt64(val) => parse_fmt_i64(iter, val)
 	}
 }
 
@@ -283,7 +266,7 @@ pub fn format<F>(fmt: &str, f: F) -> Result<Option<String>, String> where F: Fn(
 			};
 
 			match f(tag)? {
-				Some(val) => out += &parsefmtval(&mut iter, val)?,
+				Some(val) => out += &parse_fmt_val(&mut iter, val)?,
 				None => out.push(tag)
 			};
 
