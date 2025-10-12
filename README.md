@@ -19,5 +19,5 @@ cp target/release/corrodedbar ~/.local/bin # or somewhere else in your $PATH
 
 Then, just add `corrodedbar` into your window manager's autostart script. Upon first launch, it will generate an example config file which you can edit to further suit your needs.
 
-If you want to check out what corrodedbar has to offer, see the [example config file's documentation](https://github.com/prochazkaml/corrodedbar/blob/master/src/example.conf).
+If you want to check out what corrodedbar has to offer, see the [example config file's documentation](https://github.com/prochazkaml/corrodedbar/blob/master/src/example.toml).
 
