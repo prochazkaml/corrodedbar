@@ -32,8 +32,8 @@ maxinterval = 50
 #                behaves as normal.
 #   `icon` sets the icon which will prefix the module's output
 #          (separated by a single space).
-#   `unixsignal` specifies the UNIX signal which will trigger an instant run of the
-#                module if corrodedbar receives such signal.
+#   `unix_signal` specifies the UNIX signal which will trigger an instant run of the
+#                 module if corrodedbar receives such signal.
 
 # Example module of the `network` implementation.
 #
@@ -148,7 +148,7 @@ impl.cpu.temp_device="Package id 0"
 [[modules]]
 icon="☀️"
 interval=1000
-unixsignal=41
+unix_signal=41
 impl.backlight.device_curr="/sys/class/backlight/acpi_video0/brightness"
 impl.backlight.device_max="/sys/class/backlight/acpi_video0/max_brightness"
 
@@ -175,7 +175,7 @@ impl.microphone = {}
 icon="🔊"
 interval=1000
 impl.volume = {}
-unixsignal=40
+unix_signal=40
 
 # Example module of the `battery` implementation.
 #
