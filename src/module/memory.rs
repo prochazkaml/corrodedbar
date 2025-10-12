@@ -1,13 +1,17 @@
-use crate::config;
 use crate::modules;
 use crate::formatter;
 use crate::fmt_opt;
-use crate::config_optional;
 use crate::utils;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Memory {
+	#[serde(default = "default_format")]
 	format: String
 }
+
+fn default_format() -> String { "%p%%/%s%%".to_string() }
 
 fn calculate_value(total: f64, free: f64, percentage: bool, used: bool) -> Result<Option<f64>, String> {
 	if free < 0.0 || total <= 0.0 { return Ok(None) }
@@ -79,9 +83,9 @@ impl modules::ModuleImplementation for Memory {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Memory {
-		format: config_optional!(config, "_format", "%p%%/%s%%".to_string())
-	}))
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Memory = Table::try_into(config).map_err(|err| format!("Error reading `memory` config: {err}"))?;
+
+	Ok(Box::new(new))
 }
 

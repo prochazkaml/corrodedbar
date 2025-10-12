@@ -1,0 +1,226 @@
+# Example config file for corrodedbar
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+# Common settings that are not applicable to any specific module.
+# 
+# `modules` is a list of modules that will be loaded. They are defined later in the config file.
+#
+# `leftpad` specifies the prefix of the output string that will be sent to your WM.
+#           Defaults to " " (one space).
+#
+# `rightpad` specifies the suffix.
+#            Defaults to " " (one space).
+#
+# `delim` specifies the space between the displayed modules.
+#         Defaults to "  " (two spaces).
+#
+# `maxinterval` specifies the maximum delay (in ms) that the scheduler will allow.
+#               Making this value smaller improves response times to UNIX signals.
+#               If not specified, the maximum delay will be unlimited.
+
+maxinterval = 50
+
+# Now follow the configurations for individual modules.
+#
+# Mandatory common options:
+#   `interval` sets the interval in milliseconds when the module should run.
+#   `impl.{modulename} = {...}` specifies which internal implementation should implement this module
+#                               and provides module-specific configuration.
+# 
+# Optional common options:
+#   `startdelay` delays the first run of a module. After that, the `interval` option
+#                behaves as normal.
+#   `icon` sets the icon which will prefix the module's output
+#          (separated by a single space).
+#   `unixsignal` specifies the UNIX signal which will trigger an instant run of the
+#                module if corrodedbar receives such signal.
+
+# Example module of the `network` implementation.
+#
+# Displays the current connection's IP address and subnet width.
+#
+# Does not use any specific options.
+
+[[modules]]
+icon="🌎"
+interval=2000
+impl.network = {}
+
+# Example module of the `bluetooth` implementation.
+#
+# Only displays if any Bluetooth radio is enabled, otherwise it hides.
+#
+# Optional options:
+#   `enabled` specifies the output string if Bluetooth is enabled.
+#             Defaults to `enabled`.
+
+[[modules]]
+icon="󰂯"
+interval=1000
+impl.bluetooth = {}
+
+# Example module of the `memory` implementation.
+#
+# Displays information about the current state of system memory & swap.
+#
+# Optional options:
+#   `format` specifies the output format. The format options are:
+#            - `%p` displays the amount of used physical memory as a percentage.
+#            - `%h` displays the amount of used physical memory in bytes.
+#            - `%P` displays the amount of free physical memory as a percentage.
+#            - `%H` displays the amount of free physical memory in bytes.
+#            - `%s` displays the amount of used swap as a percentage.
+#            - `%w` displays the amount of used swap as in bytes.
+#            - `%S` displays the amount of free swap as a percentage.
+#            - `%W` displays the amount of free swap as in bytes.
+#            Defaults to `%p%%/%s%%`.
+
+[[modules]]
+icon="🐏"
+interval=500
+impl.memory = {}
+
+# Example module of the `uptime` implementation.
+#
+# Shows the system's uptime.
+#
+# Optional options:
+#   `format` specifies the output format. The format options are:
+#            - `%d` displays the total number of days since boot.
+#            - `%H` displays the hours since boot capped to 0-23.
+#            - `%h` displays the total number of hours since boot.
+#            - `%M` displays the minutes since boot capped to 0-59.
+#            - `%m` displays the total number of minutes since boot.
+#            - `%S` displays the seconds since boot capped to 0-59.
+#            - `%s` displays the total number of seconds since boot.
+#            - `%L` displays the milliseconds since boot capped to 0-999.
+#            - `%l` displays the total number of milliseconds since boot.
+#            Defaults to `%dd %Hh %Mm`.
+
+[[modules]]
+icon="↑"
+interval=15000
+impl.uptime = {}
+
+# Example module of the `cpu` implementation.
+#
+# Displays info about the CPU and its usage.
+#
+# Mandatory options:
+#   `temp_device` is a label of the temperature readout of the CPU
+#                 (searches in /sys/class/hwmon/*/*_label).
+#                 If the `%t` formatting option is not used, it may contain
+#                 a dummy label.
+#
+# Optional options:
+#   `format` specifies the output format. The format options are:
+#            - `%t` displays the current CPU temperature.
+#            - `%F` displays the highest clock speed of any core.
+#            - `%f` displays the lowest clock speed of any core.
+#            Defaults to `%t°C %F MHz`.
+
+[[modules]]
+icon="🌡️"
+interval=1000
+impl.cpu.temp_device="Package id 0"
+
+# Example module of the `backlight` implementation.
+#
+# Displays the current backlight level.
+#
+# This example listens for signal #41 which can be requested e.g. from your
+# script which fires when you press the backlight up/down hotkey.
+#
+# Mandatory options:
+#   `device_curr` is the path to the file which contains the current raw brightness
+#                 represented as a positive integer (usually somewhere in
+#                 /sys/class/backlight/DEV).
+#   `device_max` is the path to the file which contains the maximum possible raw brightness
+#                (usually somewhere in /sys/class/backlight/DEV).
+#
+# Optional options:
+#   `format` specifies the output format. The format options are:
+#            - `%c` displays the current raw backlight value.
+#            - `%u` displays the current backlight value as a percentage.
+#            - `%m` displays the maximum possible raw backlight value
+#            Defaults to `%t%%`.
+
+[[modules]]
+icon="☀️"
+interval=1000
+unixsignal=41
+impl.backlight.device_curr="/sys/class/backlight/acpi_video0/brightness"
+impl.backlight.device_max="/sys/class/backlight/acpi_video0/max_brightness"
+
+# Example module of the `microphone` implementation.
+#
+# Only displays if any PulseAudio application is using the microphone, otherwise it hides.
+#
+# Optional options:
+#   `active` specifies the output string if the microphone is being used.
+#            Defaults to `active`.
+
+[[modules]]
+icon="🎤"
+interval=1000
+impl.microphone = {}
+
+# Example module of the `volume` implementation.
+#
+# Displays the output volume of the current PulseAudio output device.
+#
+# Does not use any specific options.
+
+[[modules]]
+icon="🔊"
+interval=1000
+impl.volume = {}
+unixsignal=40
+
+# Example module of the `battery` implementation.
+#
+# Displays the current battery status.
+#
+# Note that `icon` is not set, as the implementation adds one depending on the status of the battery (discharging, charging, full).
+#
+# Mandatory options:
+#   `device` specifies the battery device in /sys/class/power_supply.
+#
+# Optional options:
+#   `format` specifies the output format. The format options are:
+#            - `%i` displays the appropriate icon.
+#            - `%p` displays the current energy percentage.
+#            - `%w` displays the current power at which the battery is (dis)charging.
+#            - `%e` displays the time estimate till full (dis)charge.
+#            Defaults to `%i %p%% (%w W %e)`
+#
+#   `esttimeformat` specifies the format of the time estimate.
+#                   - `%d` displays the total number of days till finish.
+#                   - `%H` displays the hours till finish capped to 0-23.
+#                   - `%h` displays the total number of hours till finish.
+#                   - `%M` displays the minutes till finish capped to 0-59.
+#                   - `%m` displays the total number of minutes till finish.
+#                   - `%S` displays the seconds till finish capped to 0-59.
+#                   - `%s` displays the total number of seconds till finish.
+#                   - `%L` displays the milliseconds till finish capped to 0-999.
+#                   - `%l` displays the total number of milliseconds till finish.
+#                   Defaults to `%h:%M`.
+
+[[modules]]
+interval = 2000
+impl.battery.format = "%i %p%% %w W %e"
+impl.battery.device = "BAT0"
+
+# Example module of the `time` implementation.
+#
+# Displays the current time.
+#
+# Optional options:
+#   `format` specifies the output time format. The format options are the same as
+#            e.g. `strftime` in C, or `date` in the shell.
+#            Defaults to `%H:%M`.
+
+[[modules]]
+interval = 1000
+impl.time.format = "%a %d %b %H:%M:%S"
+

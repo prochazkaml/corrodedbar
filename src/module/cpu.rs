@@ -1,15 +1,19 @@
-use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::formatter;
 use crate::fmt_opt;
-use crate::config_mandatory;
-use crate::config_optional;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Cpu {
 	temp_device: String,
+
+	#[serde(default = "default_format")]
 	format: String
 }
+
+fn default_format() -> String { "%t°C %F MHz".to_string() }
 
 impl Cpu {
 	fn try_get_temp(&self) -> Result<Option<f64>, String> {
@@ -110,10 +114,9 @@ impl modules::ModuleImplementation for Cpu {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Cpu {
-		temp_device: config_mandatory!(config, "_tempdevice"),
-		format: config_optional!(config, "_format", "%t°C %F MHz".to_string())
-	}))
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Cpu = Table::try_into(config).map_err(|err| format!("Error reading `cpu` config: {err}"))?;
+
+	Ok(Box::new(new))
 }
 

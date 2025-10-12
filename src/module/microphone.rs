@@ -1,12 +1,19 @@
-use crate::config;
 use crate::modules;
-use crate::config_optional;
 
 use pulsectl::controllers::SourceController;
 use pulsectl::controllers::AppControl;
+use toml::Table;
+
+#[derive(serde::Deserialize)]
+struct MicrophoneConfig {
+	#[serde(default = "default_active")]
+	active: String
+}
+
+fn default_active() -> String { "active".to_string() }
 
 struct Microphone {
-	active: String,
+	config: MicrophoneConfig,
 	handler: SourceController
 }
 
@@ -15,13 +22,15 @@ impl modules::ModuleImplementation for Microphone {
 		let apps = self.handler.list_applications()
 			.map_err(|e| format!("PulseAudio error: {}", e))?;
 
-		Ok((!apps.is_empty()).then(|| self.active.to_string()))
+		Ok((!apps.is_empty()).then(|| self.config.active.to_string()))
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let config: MicrophoneConfig = Table::try_into(config).map_err(|err| format!("Error reading `microphone` config: {err}"))?;
+
 	Ok(Box::new(Microphone {
-		active: config_optional!(config, "_active", "active".to_string()),
+		config,
 		handler: SourceController::create()
 			.map_err(|e| format!("PulseAudio connection error: {}", e))?
 	}))

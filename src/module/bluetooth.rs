@@ -1,10 +1,14 @@
-use crate::config;
 use crate::modules;
-use crate::config_optional;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Bluetooth {
+	#[serde(default = "default_enabled")]
 	enabled: String
 }
+
+fn default_enabled() -> String { "enabled".to_string() }
 
 impl modules::ModuleImplementation for Bluetooth {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
@@ -45,9 +49,9 @@ impl modules::ModuleImplementation for Bluetooth {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Bluetooth {
-		enabled: config_optional!(config, "_enabled", "Enabled".to_string())
-	}))
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Bluetooth = Table::try_into(config).map_err(|err| format!("Error reading `bluetooth` config: {err}"))?;
+
+	Ok(Box::new(new))
 }
 

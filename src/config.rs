@@ -1,45 +1,101 @@
 use crate::utils;
 
-pub struct ConfigKeyValue {
-	pub key: String,
-	pub value: String
+use serde::{Deserialize, Deserializer};
+use toml::{Value, Table};
+use std::time::{Duration, SystemTime};
+
+#[derive(serde::Deserialize)]
+pub struct Config {
+	#[serde(default = "default_spaces::<1>")]
+	pub left_pad: String,
+
+	#[serde(default = "default_spaces::<1>")]
+	pub right_pad: String,
+
+	#[serde(default = "default_spaces::<2>")]
+	pub delim: String,
+
+	#[serde(deserialize_with = "deserialize_millis")]
+	#[serde(default = "default_max_interval")]
+	pub max_interval: Duration,
+
+	#[serde(skip)]
+	#[serde(default = "default_mtime")]
+	pub mtime: SystemTime,
+
+	pub modules: Vec<ModuleConfig>
 }
 
-pub struct ConfigModule {
+fn default_spaces<const N: usize>() -> String { " ".repeat(N) }
+fn default_max_interval() -> Duration { Duration::MAX }
+fn default_mtime() -> SystemTime { SystemTime::now() }
+
+fn deserialize_millis<'de, D: Deserializer<'de>>(deserializer: D) -> Result<Duration, D::Error> {
+	let val = Value::deserialize(deserializer)?;
+
+	if let Value::Integer(dur) = val {
+		return Ok(Duration::from_millis(dur as u64))
+	}
+
+	if let Value::Float(dur) = val {
+		return Ok(Duration::from_secs_f64(dur * 1000.0))
+	}
+
+	Err(serde::de::Error::custom("Expected max_interval to be an integer or float"))
+}
+
+#[derive(serde::Deserialize, Clone)]
+pub struct ModuleConfig {
+	pub icon: Option<String>,
+
+	#[serde(deserialize_with = "deserialize_millis")]
+	pub interval: Duration,
+
+	#[serde(deserialize_with = "deserialize_millis")]
+	#[serde(default = "default_start_delay")]
+	pub start_delay: Duration,
+
+	pub unix_signal: Option<u8>,
+
+	#[serde(deserialize_with = "deserialize_module_impl")]
+	#[serde(rename = "impl")]
+	pub implementation: ModuleImplementationConfig
+}
+
+fn default_start_delay() -> Duration { Duration::ZERO }
+
+#[derive(Clone)]
+pub struct ModuleImplementationConfig {
 	pub name: String,
-	pub settings: Vec<ConfigKeyValue>
+	pub config: Table
 }
 
-pub fn get_module<'a>(cfg: &'a Vec<ConfigModule>, name: &str) -> Option<&'a Vec<ConfigKeyValue>> {
-	for module in cfg {
-		if module.name == name { return Some(&module.settings); }
+fn deserialize_module_impl<'de, D: Deserializer<'de>>(deserializer: D) -> Result<ModuleImplementationConfig, D::Error> {
+	let impl_map = Table::deserialize(deserializer)?;
+
+	let mut keys = impl_map.keys();
+
+	if keys.len() != 1 {
+		Err(serde::de::Error::custom("Expected a single key in `impl` table"))?
 	}
 
-	None
+	let key = keys.next().unwrap();
+
+	let Value::Table(module) = &impl_map[key] else {
+		Err(serde::de::Error::custom("Expected a table in `impl` table"))?
+	};
+
+	Ok(ModuleImplementationConfig {
+		name: key.to_string(),
+		config: module.clone()
+	})
 }
 
-pub fn get_key_value<'a>(module: &'a Vec<ConfigKeyValue>, key: &str) -> Option<&'a str> {
-	for keyvalue in module {
-		if keyvalue.key == key { return Some(&keyvalue.value); }
+impl Config {
+	fn from_toml(config: &str) -> Result<Self, String> {
+		let config = toml::from_str(config).map_err(|err| format!("Error parsing TOML: {err}"))?;
+		Ok(config)
 	}
-	
-	None
-}
-
-pub fn get_key_value_default<'a>(module: &'a Vec<ConfigKeyValue>, key: &str, default: &'a str) -> &'a str {
-	get_key_value(module, key).unwrap_or(default)
-}
-
-pub fn get_key_value_as<T>(module: &Vec<ConfigKeyValue>, key: &str) -> Option<T>
-	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
-
-	Some(get_key_value(module, key)?.parse::<T>().unwrap())
-}
-
-pub fn get_key_value_default_as<T>(module: &Vec<ConfigKeyValue>, key: &str, default: T) -> T
-	where T: std::str::FromStr, <T as std::str::FromStr>::Err : std::fmt::Debug {
-
-	get_key_value_as(module, key).unwrap_or(default)
 }
 
 fn get_xdg_config_path() -> Option<String> {
@@ -60,39 +116,35 @@ fn get_config_path() -> Option<String> {
 	Some(get_general_config_path()? + "/corrodedbar")
 }
 
-pub fn get_config_file_mtime() -> Result<String, String> {
+pub fn get_config_file_mtime() -> Result<SystemTime, String> {
 	let Some(config_dir_path) = get_config_path() else {
 		Err("Could not determine the config directory. Make sure $HOME is set.".to_string())?
 	};
 
-	let config_path = config_dir_path + "/main.conf";
+	let config_path = config_dir_path + "/main.toml";
 
 	let metadata = std::fs::metadata(config_path)
 		.map_err(|e| format!("Error fetching config file metadata: {}", e))?;
 
-	let modified = metadata.modified()
+	let mtime = metadata.modified()
 		.map_err(|e| format!("Error determining config file mtime: {}", e))?;
-
-	let mtime = modified.duration_since(std::time::SystemTime::UNIX_EPOCH)
-		.map_err(|e| format!("Config file mtime invalid: {}", e))?
-		.as_millis().to_string();
 
 	Ok(mtime)
 }
 
-pub fn load_config() -> Result<Vec<ConfigModule>, String> {
+pub fn load_config() -> Result<Config, String> {
 	let Some(config_dir_path) = get_config_path() else {
 		Err("Could not determine the config directory. Make sure $HOME is set.".to_string())?
 	};
 
-	let config_path = format!("{}/main.conf", &config_dir_path);
+	let config_path = format!("{}/main.toml", &config_dir_path);
 
 	let config_contents = utils::read_string(&config_path).or_else(|_| {
 		if let Err(e) = std::fs::create_dir_all(&config_dir_path) {
 			Err(format!("Error creating path {}: {}", config_dir_path, e))?
 		}
 
-		let exampleconf = include_str!("example.conf");
+		let exampleconf = include_str!("example.toml");
 
 		if let Err(e) = std::fs::write(&config_path, exampleconf) {
 			Err(format!("Error creating config file {}: {}", config_path, e))?
@@ -101,72 +153,12 @@ pub fn load_config() -> Result<Vec<ConfigModule>, String> {
 		Ok::<String, String>(exampleconf.to_string())
 	})?;
 
-	let config_lines = config_contents.lines();
+	let mut config = Config::from_toml(&config_contents)?;
 
-	let mut found_general: bool = false;
-	let mut output: Vec<ConfigModule> = Vec::new();
-
-	for (linenum, line) in config_lines.enumerate() {
-		if line.is_empty() { continue }
-
-		// Ignore comment lines
-		
-		if line.starts_with('#') { continue }
-
-		// Check for module name tag (eg. "[network]")
-
-		if line.starts_with('[') && line.ends_with(']') {
-			let new_module = line[1..line.len()-1].to_string();
-
-			let mut module = ConfigModule {
-				name: new_module,
-				settings: Vec::new()
-			};
-			
-			if &module.name == "general" {
-				found_general = true;
-
-				if let Ok(val) = get_config_file_mtime() {
-					module.settings.push(ConfigKeyValue {
-						key: "configmtime".to_string(),
-						value: val
-					})
-				}
-			}
-
-			output.push(module);
-
-			continue
-		}
-
-		// Parse key value pair
-
-		let Some((key, value)) = line.split_once('=') else {
-			Err(format!("Syntax error at line {}: expected key/value pair", linenum + 1))?
-		};
-
-		let mut value_trim = value.trim();
-
-		if value_trim.is_empty() { continue }
-
-		if value_trim.starts_with('"') && value_trim.ends_with('"') {
-			value_trim = &value_trim[1..value_trim.len()-1];
-		}
-
-		if output.is_empty() {
-			Err(format!("Syntax error at line {}: key/value pair found before any module tag", linenum + 1))?
-		}
-
-		output.last_mut().unwrap().settings.push(ConfigKeyValue {
-			key: key.trim().to_string(),
-			value: value_trim.to_string()
-		});
+	if let Ok(mtime) = get_config_file_mtime() {
+		config.mtime = mtime;
 	}
 
-	if !found_general {
-		Err("The config file is missing the [general] module.".to_string())?
-	}
-
-	Ok(output)
+	Ok(config)
 }
 

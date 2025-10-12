@@ -1,10 +1,10 @@
-use crate::config;
 use crate::modules;
 
 use dbus::blocking::Connection;
 use networkmanager::devices::{Any, Device};
 use networkmanager::NetworkManager;
 use itertools::Itertools;
+use toml::Table;
 
 struct Network {
 	dbus: Connection,
@@ -56,7 +56,7 @@ impl modules::ModuleImplementation for Network {
 	}
 }
 
-pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+pub fn init(_config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	// TODO - specific connection
 	
 	let dbus = dbus::blocking::Connection::new_system()

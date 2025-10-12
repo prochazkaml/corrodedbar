@@ -1,8 +1,8 @@
-use crate::config;
 use crate::modules;
 
 use pulsectl::controllers::SinkController;
 use pulsectl::controllers::DeviceControl;
+use toml::Table;
 
 struct Volume {
 	handler: SinkController
@@ -22,7 +22,7 @@ impl modules::ModuleImplementation for Volume {
 	}
 }
 
-pub fn init(_config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+pub fn init(_config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
 	let handler = SinkController::create()
 		.map_err(|e| format!("PulseAudio conn error: {}", e))?;
 

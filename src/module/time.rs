@@ -1,10 +1,14 @@
-use crate::config;
 use crate::modules;
-use crate::config_optional;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Time {
+	#[serde(default = "default_format")]
 	format: String
 }
+
+fn default_format() -> String { "%H:%M".to_string() }
 
 impl modules::ModuleImplementation for Time {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
@@ -12,10 +16,9 @@ impl modules::ModuleImplementation for Time {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Time {
-		format: config_optional!(config, "_format", "%H:%M".to_string())
-	}))
-}
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Time = Table::try_into(config).map_err(|err| format!("Error reading `time` config: {err}"))?;
 
+	Ok(Box::new(new))
+}
 

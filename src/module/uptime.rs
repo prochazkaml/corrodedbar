@@ -1,11 +1,15 @@
-use crate::config;
 use crate::modules;
 use crate::utils;
-use crate::config_optional;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Uptime {
+	#[serde(default = "default_format")]
 	format: String
 }
+
+fn default_format() -> String { "%dd %Hh %Mm".to_string() }
 
 impl modules::ModuleImplementation for Uptime {
 	fn run(&mut self, _ts: std::time::Duration) -> Result<Option<String>, String> {
@@ -15,9 +19,9 @@ impl modules::ModuleImplementation for Uptime {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Uptime {
-		format: config_optional!(config, "_format", "%dd %Hh %Mm".to_string())
-	}))
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Uptime = Table::try_into(config).map_err(|err| format!("Error reading `uptime` config: {err}"))?;
+
+	Ok(Box::new(new))
 }
 

@@ -1,16 +1,23 @@
-use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::formatter;
 use crate::fmt_opt;
-use crate::config_mandatory;
-use crate::config_optional;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Battery {
 	device: String,
+	
+	#[serde(default = "default_format")]
 	format: String,
+
+	#[serde(default = "default_est_time_format")]
 	est_time_format: String
 }
+
+fn default_format() -> String { "%i %p%% (%w W %e)".to_string() }
+fn default_est_time_format() -> String { "%h:%M".to_string() }
 
 impl Battery {
 	fn get_icon(&self) -> Result<Option<String>, String> {
@@ -80,11 +87,9 @@ impl modules::ModuleImplementation for Battery {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Battery {
-		device: config_mandatory!(config, "_device"),
-		format: config_optional!(config, "_format", "%i %p%% (%w W %e)".to_string()),
-		est_time_format: config_optional!(config, "_esttimeformat", "%h:%M".to_string())
-	}))
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Battery = Table::try_into(config).map_err(|err| format!("Error reading `time` config: {err}"))?;
+
+	Ok(Box::new(new))
 }
 

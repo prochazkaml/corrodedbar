@@ -1,62 +1,51 @@
-use crate::config;
+use crate::config::{self, Config};
 use crate::modules;
 use crate::wm;
 use crate::args;
 use std::time::{Duration, Instant};
 use signal_hook::iterator::Signals;
 
-pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::ModuleRuntime>, params: &args::AppParams) {
+pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &args::AppParams) {
 	let mut counters: Vec<Duration> = Vec::new();
 	let mut interrupts: Vec<bool> = vec![false; modules.len()];
 	let mut strings: Vec<Option<String>> = vec![None; modules.len()];
 	
 	for module in &mut *modules {
-		counters.push(module.startdelay);
+		counters.push(module.config.start_delay);
 	}
 
 	let start = Instant::now();
 
-	let general = config::get_module(config, "general").unwrap();
-
-	let defaults: Vec<&'static str> = vec![" ", " ", "  "];
-
-	let left_pad = config::get_key_value_default(general, "leftpad", defaults[0]);
-	let right_pad = config::get_key_value_default(general, "rightpad", defaults[1]);
-	let delim = config::get_key_value_default(general, "delim", defaults[2]);
-
 	let mut last_output = "".to_string();
-
-	let max_delay: Duration = match config::get_key_value_as(general, "maxinterval") as Option<u64> {
-		Some(val) => Duration::from_millis(val),
-		None => Duration::MAX
-	};
 
 	let mut signal_ids: Vec<i32> = Vec::new();
 
 	for module in modules.iter() {
-		if let Some(val) = module.unixsignal {
+		if let Some(val) = module.config.unix_signal {
 			signal_ids.push(val as i32);
 		}
 	}
 
 	let mut signals = Signals::new(signal_ids).unwrap();
 
-	let old_config_mtime = config::get_key_value_default(general, "configmtime", "");
+	let old_config_mtime = config::get_config_file_mtime();
 
 	loop {
 		// Check if the config file has been modified
 		
-		if !params.noautoreload && !old_config_mtime.is_empty() {
-			if let Ok(val) = config::get_config_file_mtime() {
-				if val != old_config_mtime { return }
-			}
+		if !params.noautoreload
+			&& let Ok(old) = old_config_mtime
+			&& let Ok(val) = config::get_config_file_mtime()
+			&& val != old
+		{
+			return
 		}
 
 		// Run each scheduled module
 
 		for signal in signals.pending() {
 			for i in 0..modules.len() {
-				if modules[i].unixsignal == Some(signal as u8) {
+				if modules[i].config.unix_signal == Some(signal as u8) {
 					interrupts[i] = true;
 				}
 			}
@@ -72,7 +61,7 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 			if elapsed < counters[i] && !interrupts[i] { continue }
 
 			if params.verbose {
-				println!("Running module {}.", &modules[i].name);
+				println!("Running module {}.", &modules[i].config.implementation.name);
 			}
 
 			strings[i] = match modules[i].module.run(counters[i]) {
@@ -88,17 +77,17 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 			if interrupts[i] {
 				interrupts[i] = false;
 			} else {
-				counters[i] += modules[i].interval;
+				counters[i] += modules[i].config.interval;
 			}
 		}
 
 		// Generate the output string
 		
-		let mut output = left_pad.to_string();
+		let mut output = config.left_pad.clone();
 
 		for i in 0..strings.len() {
 			if let Some(val) = &strings[i] {
-				if let Some(val) = &modules[i].icon {
+				if let Some(val) = &modules[i].config.icon {
 					output += val;
 					output += " ";
 				}
@@ -106,12 +95,12 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 				output += val;
 
 				if i < strings.len() - 1 {
-					output += delim;
+					output += &config.delim;
 				}
 			}
 		}
 
-		output += right_pad;
+		output += &config.right_pad;
 
 		if output != last_output {
 			wm::set_root_name(&output);
@@ -133,8 +122,8 @@ pub fn run(config: &Vec<config::ConfigModule>, modules: &mut Vec<modules::Module
 		if least_sleep > elapsed {
 			let mut sleep = least_sleep - elapsed;
 
-			if sleep > max_delay {
-				sleep = max_delay;
+			if sleep > config.max_interval {
+				sleep = config.max_interval;
 			}
 
 			if params.verbose {

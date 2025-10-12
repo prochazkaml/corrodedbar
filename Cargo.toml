@@ -1,7 +1,7 @@
 [package]
 name = "corrodedbar"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,4 +15,6 @@ libc = "0.2.153"
 signal-hook = "0.3.17"
 argp = "0.3.0"
 itertools = "0.14.0"
+toml = "0.9.8"
+serde = { version = "1.0.228", features = ["derive"] }
 

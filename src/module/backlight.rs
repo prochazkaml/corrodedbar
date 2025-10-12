@@ -1,16 +1,20 @@
-use crate::config;
 use crate::modules;
 use crate::utils;
 use crate::formatter;
 use crate::fmt_opt;
-use crate::config_mandatory;
-use crate::config_optional;
 
+use toml::Table;
+
+#[derive(serde::Deserialize)]
 struct Backlight {
 	device_curr: String,
 	device_max: String,
+	
+	#[serde(default = "default_format")]
 	format: String
 }
+
+fn default_format() -> String { "%u%%".to_string() }
 
 impl Backlight {
 	fn get_value(&self) -> Result<Option<i64>, String> {
@@ -46,11 +50,9 @@ impl modules::ModuleImplementation for Backlight {
 	}
 }
 
-pub fn init(config: &Vec<config::ConfigKeyValue>) -> Result<Box<dyn modules::ModuleImplementation>, String> {
-	Ok(Box::new(Backlight {
-		device_curr: config_mandatory!(config, "_devicecurr"),
-		device_max: config_mandatory!(config, "_devicemax"),
-		format: config_optional!(config, "_format", "%u%%".to_string())
-	}))
+pub fn init(config: Table) -> Result<Box<dyn modules::ModuleImplementation>, String> {
+	let new: Backlight = Table::try_into(config).map_err(|err| format!("Error reading `time` config: {err}"))?;
+
+	Ok(Box::new(new))
 }
 
