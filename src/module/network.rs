@@ -4,6 +4,7 @@ use crate::modules;
 use dbus::blocking::Connection;
 use networkmanager::devices::{Any, Device};
 use networkmanager::NetworkManager;
+use itertools::Itertools;
 
 struct Network {
 	dbus: Connection,
@@ -53,21 +54,7 @@ impl modules::ModuleImplementation for Network {
 			}
 		}
 
-		if ips.len() <= 0 {
-			return Ok(None);
-		}
-		
-		let mut output = String::new();
-
-		for i in 0..ips.len() {
-			output += &ips[i];
-
-			if i < ips.len() - 1 {
-				output += " ";
-			}
-		}
-
-		return Ok(Some(output))
+		Ok((!ips.is_empty()).then(|| ips.iter().join(" ")))
 	}
 }
 

@@ -93,25 +93,25 @@ struct FormatOptionParam {
 }
 
 macro_rules! handlefmtopt {
-	($enumtype:ident is $type:ty, $dest:ident[$idx:ident] = $src:ident) => {
+	($enumtype:ident is $type:ty, $dest:ident = $src:ident) => {
 		if let Ok(val) = $src.parse::<$type>() {
-			$dest[$idx].val = FormatOptionParamVal::$enumtype(val); 
+			$dest.val = FormatOptionParamVal::$enumtype(val); 
 		}
 	}
 }
 
-fn setfmtoptparam(opts: &mut [FormatOptionParam], tagstr: &String) {
+fn setfmtoptparam(opts: &mut [FormatOptionParam], tagstr: &str) {
 	let mut tagchars = tagstr.chars();
 
 	let tag = tagchars.next().unwrap(); // We're sure that tagstr will be at least 1 char
 	let contents = tagchars.as_str();
 
-	for i in 0..opts.len() {
-		if opts[i].id == tag {
-			match opts[i].val {
-				FormatOptionParamVal::TypeFloat64(_) => handlefmtopt!(TypeFloat64 is f64, opts[i] = contents),
-				FormatOptionParamVal::TypeUsize(_) => handlefmtopt!(TypeUsize is usize, opts[i] = contents),
-				FormatOptionParamVal::TypeInt64(_) => handlefmtopt!(TypeInt64 is i64, opts[i] = contents)
+	for opt in opts {
+		if opt.id == tag {
+			match opt.val {
+				FormatOptionParamVal::TypeFloat64(_) => handlefmtopt!(TypeFloat64 is f64, opt = contents),
+				FormatOptionParamVal::TypeUsize(_) => handlefmtopt!(TypeUsize is usize, opt = contents),
+				FormatOptionParamVal::TypeInt64(_) => handlefmtopt!(TypeInt64 is i64, opt = contents)
 			}
 		}
 	}
@@ -138,7 +138,7 @@ fn parsefmtoptparams(opts: &mut [FormatOptionParam], iter: &mut CharIterator) {
 
 		if c != ' ' {
 			currtag.push(c);
-		} else if currtag.len() > 0 {
+		} else if !currtag.is_empty() {
 			setfmtoptparam(opts, &currtag);
 			currtag = String::new();
 		}
@@ -193,8 +193,7 @@ fn parsefmtf64(iter: &mut CharIterator, val: FmtGenFloat64) -> Result<String, St
 
 	let mut resultstr = format!("{:.decimals$}", result.abs(), decimals = decimals);
 
-	let len = resultstr.find(|c: char| !c.is_digit(10))
-		.unwrap_or_else(|| resultstr.len());
+	let len = resultstr.find(|c: char| !c.is_ascii_digit()).unwrap_or(resultstr.len());
 
 	if len < zeropad {
 		resultstr = "0".repeat(zeropad - len) + &resultstr
@@ -251,8 +250,7 @@ fn parsefmti64(iter: &mut CharIterator, val: FmtGenInt64) -> Result<String, Stri
 
 	let mut resultstr = result.to_string();
 
-	let len = resultstr.find(|c: char| !c.is_digit(10))
-		.unwrap_or_else(|| resultstr.len());
+	let len = resultstr.find(|c: char| !c.is_ascii_digit()).unwrap_or(resultstr.len());
 
 	if len < zeropad {
 		resultstr = "0".repeat(zeropad - len) + &resultstr
@@ -269,7 +267,7 @@ fn parsefmtval(iter: &mut CharIterator, val: FormatGenerator) -> Result<String, 
 	}
 }
 
-pub fn format<F>(fmt: &String, f: F) -> Result<Option<String>, String> where F: Fn(char) -> Result<Option<FormatGenerator>, String> {
+pub fn format<F>(fmt: &str, f: F) -> Result<Option<String>, String> where F: Fn(char) -> Result<Option<FormatGenerator>, String> {
 	let mut out = String::new();
 	
 	let mut iter = fmt.chars().peekable();

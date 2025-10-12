@@ -25,10 +25,10 @@ pub fn readlineas<T>(path: &str) -> Result<T, String>
 		.map_err(|e| format!("Format error: {:?}", e))
 }
 
-pub fn formatduration(fmt: &String, dur: f64) -> Result<Option<String>, String> {
+pub fn formatduration(fmt: &str, dur: f64) -> Result<Option<String>, String> {
 	let timeint = (dur * 1000.0) as i64;
 
-	formatter::format(&fmt, |tag| {
+	formatter::format(fmt, |tag| {
 		Ok(Some(match tag {
 			'd' => fmtopt!(i64 raw timeint, "[d86400000]"),
 			'H' => fmtopt!(i64 raw timeint, "[d3600000 r24 z2]"),

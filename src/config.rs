@@ -43,7 +43,7 @@ pub fn getkeyvaluedefaultas<T>(module: &Vec<ConfigKeyValue>, key: &str, default:
 }
 
 fn getxdgconfigpath() -> Option<String> {
-	Some(std::env::var_os("XDG_CONFIG_HOME")?.into_string().ok()?)
+	std::env::var_os("XDG_CONFIG_HOME")?.into_string().ok()
 }
 
 fn getfakexdgconfigpath() -> Option<String> {
@@ -53,7 +53,7 @@ fn getfakexdgconfigpath() -> Option<String> {
 fn getgeneralconfigpath() -> Option<String> {
 	// Try the official XDG config path, if that fails, fall back to $HOME/.config
 
-	Some(getxdgconfigpath().or_else(getfakexdgconfigpath)?)
+	getxdgconfigpath().or_else(getfakexdgconfigpath)
 }
 
 fn getconfigpath() -> Option<String> {
@@ -107,15 +107,15 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 	let mut output: Vec<ConfigModule> = Vec::new();
 
 	for (linenum, line) in configlines.enumerate() {
-		if line.len() <= 0 { continue }
+		if line.is_empty() { continue }
 
 		// Ignore comment lines
 		
-		if line.chars().nth(0).unwrap() == '#' { continue }
+		if line.starts_with('#') { continue }
 
 		// Check for module name tag (eg. "[network]")
 
-		if line.chars().nth(0).unwrap() == '[' && line.chars().last().unwrap() == ']' {
+		if line.starts_with('[') && line.ends_with(']') {
 			let newmodule = line[1..line.len()-1].to_string();
 
 			let mut module = ConfigModule {
@@ -147,13 +147,13 @@ pub fn loadconfig() -> Result<Vec<ConfigModule>, String> {
 
 		let mut valuetrim = value.trim();
 
-		if valuetrim.len() <= 0 { continue }
+		if valuetrim.is_empty() { continue }
 
-		if valuetrim.chars().nth(0).unwrap() == '"' && valuetrim.chars().last().unwrap() == '"' {
+		if valuetrim.starts_with('"') && valuetrim.ends_with('"') {
 			valuetrim = &valuetrim[1..valuetrim.len()-1];
 		}
 
-		if output.len() <= 0 {
+		if output.is_empty() {
 			Err(format!("Syntax error at line {}: key/value pair found before any module tag", linenum + 1))?
 		}
 

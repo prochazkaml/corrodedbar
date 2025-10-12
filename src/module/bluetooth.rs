@@ -11,7 +11,7 @@ impl modules::ModuleImplementation for Bluetooth {
 		let mut isenabled = false;
 
 		unsafe {
-			let file = libc::open("/dev/rfkill\0".as_ptr() as *const libc::c_char, libc::O_RDONLY);
+			let file = libc::open(c"/dev/rfkill".as_ptr(), libc::O_RDONLY);
 		
 			if file < 0 {
 				Err("/dev/rfkill inaccessible".to_string())?
@@ -41,11 +41,7 @@ impl modules::ModuleImplementation for Bluetooth {
 			libc::close(file);
 		}
 
-		return if isenabled {
-			Ok(Some(self.enabled.to_string()))
-		} else {
-			Ok(None)
-		}
+		Ok(isenabled.then(|| self.enabled.to_string()))
 	}
 }
 

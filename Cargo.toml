@@ -14,4 +14,5 @@ dbus = "0.9.7"
 libc = "0.2.153"
 signal-hook = "0.3.17"
 argp = "0.3.0"
+itertools = "0.14.0"
 

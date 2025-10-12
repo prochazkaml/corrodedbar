@@ -15,11 +15,7 @@ impl modules::ModuleImplementation for Microphone {
 		let apps = self.handler.list_applications()
 			.map_err(|e| format!("PulseAudio error: {}", e))?;
 
-		if apps.len() <= 0 {
-			return Ok(None);
-		} else {
-			return Ok(Some(self.active.to_string()));
-		}
+		Ok((!apps.is_empty()).then(|| self.active.to_string()))
 	}
 }
 

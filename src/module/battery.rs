@@ -45,7 +45,7 @@ impl Battery {
 		let status = utils::readline(&format!("/sys/class/power_supply/{}/status", self.device))?;
 
 		let power: f64 = utils::readlineas(&format!("/sys/class/power_supply/{}/power_now", self.device))?;
-				
+
 		if power == 0.0 {
 			return empty;
 		}
