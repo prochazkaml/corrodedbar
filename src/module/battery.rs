@@ -107,7 +107,7 @@ impl Battery {
 			"Charging" => {
 				let energy_full = self.get_energy_full()?;
 
-				utils::format_duration(&self.est_time_format, (energy_full - energy_now) * 3600.0 / power)
+				utils::format_duration(&self.est_time_format, ((energy_full - energy_now) * 3600.0 / power).max(0.0))
 			},
 			"Discharging" => {
 				utils::format_duration(&self.est_time_format, energy_now * 3600.0 / power)
