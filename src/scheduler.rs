@@ -70,7 +70,8 @@ pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &
 					if params.verbose {
 						println!(" -> {}", err);
 					}
-					Some(err)
+
+					(!modules[i].config.optional).then_some(err)
 				}
 			};
 

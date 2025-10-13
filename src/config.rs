@@ -55,6 +55,9 @@ pub struct ModuleConfig {
 	#[serde(default = "default_start_delay")]
 	pub start_delay: Duration,
 
+	#[serde(default = "default_false")]
+	pub optional: bool,
+
 	pub unix_signal: Option<u8>,
 
 	#[serde(deserialize_with = "deserialize_module_impl")]
@@ -62,6 +65,7 @@ pub struct ModuleConfig {
 	pub implementation: ModuleImplementationConfig
 }
 
+fn default_false() -> bool { false }
 fn default_start_delay() -> Duration { Duration::ZERO }
 
 #[derive(Clone)]

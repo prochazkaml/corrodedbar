@@ -34,6 +34,8 @@ maxinterval = 50
 #          (separated by a single space).
 #   `unix_signal` specifies the UNIX signal which will trigger an instant run of the
 #                 module if corrodedbar receives such signal.
+#   `optional` specifies whether the module should display errors on the bar (false)
+#              or if it should just omit it from the bar (true).
 
 # Example module of the `network` implementation.
 #
@@ -208,6 +210,7 @@ unix_signal=40
 
 [[modules]]
 interval = 2000
+optional = true # If you run this on a desktop without a battery, this will suppress the errors caused
 impl.battery.format = "%i %p%% %w W %e"
 impl.battery.device = "BAT0"
 
