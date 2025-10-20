@@ -39,19 +39,19 @@ pub fn init(config: &Config) -> Result<Vec<ModuleRuntime>, String> {
 
 	let loaded_modules = config.modules.iter().enumerate()
 		.filter_map(|(i, module_config)| {
-			println!("[{}/{}] Initializing module {}", i + 1, config.modules.len(), module_config.implementation.name);
+			eprintln!("[{}/{}] Initializing module {}", i + 1, config.modules.len(), module_config.implementation.name);
 			
 			let module_init = available_modules.iter()
 				.filter(|module| module.0 == module_config.implementation.name)
 				.map(|module| module.1).next();
 
 			let Some(module_init) = module_init else {
-				println!(" -> does not exist, skipping");
+				eprintln!(" -> does not exist, skipping");
 				None?
 			};
 
 			module_init(module_config.implementation.config.clone())
-				.map_err(|err| println!(" -> {}", err)).ok()
+				.map_err(|err| eprintln!(" -> {}", err)).ok()
 				.map(|module| ModuleRuntime {
 					module,
 					config: module_config.clone()

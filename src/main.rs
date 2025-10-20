@@ -11,7 +11,7 @@ fn run(params: &args::AppParams) -> Result<(), String> {
 	let config = config::load_config()?;
 
 	let mut loaded_modules = modules::init(&config)?;
-	println!("{} module(s) enabled.", loaded_modules.len());
+	eprintln!("{} module(s) enabled.", loaded_modules.len());
 
 	scheduler::run(&config, &mut loaded_modules, params);
 
@@ -24,11 +24,11 @@ fn main() {
 	loop {
 		match run(&params) {
 			Ok(()) => {
-				println!("Detected config file change, reloading.");
+				eprintln!("Detected config file change, reloading.");
 			},
 			Err(err) => {
 				wm::set_root_name(&err);
-				println!("Init failed: {}", err);
+				eprintln!("Init failed: {}", err);
 				std::thread::sleep(std::time::Duration::from_millis(1000));
 			}
 		}

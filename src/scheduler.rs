@@ -51,7 +51,7 @@ pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &
 			}
 
 			if params.verbose {
-				println!("Received signal {}.", signal);
+				eprintln!("Received signal {}.", signal);
 			}
 		}
 
@@ -61,14 +61,14 @@ pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &
 			if elapsed < counters[i] && !interrupts[i] { continue }
 
 			if params.verbose {
-				println!("Running module {}.", &modules[i].config.implementation.name);
+				eprintln!("Running module {}.", &modules[i].config.implementation.name);
 			}
 
 			strings[i] = match modules[i].module.run(counters[i]) {
 				Ok(val) => val,
 				Err(err) => {
 					if params.verbose {
-						println!(" -> {}", err);
+						eprintln!(" -> {}", err);
 					}
 
 					(!modules[i].config.optional).then_some(err)
@@ -128,7 +128,7 @@ pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &
 			}
 
 			if params.verbose {
-				println!("Going to sleep for {:?}.", sleep);
+				eprintln!("Going to sleep for {:?}.", sleep);
 			}
 
 			std::thread::sleep(sleep);
