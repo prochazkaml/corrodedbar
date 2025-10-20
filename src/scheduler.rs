@@ -1,11 +1,11 @@
+use crate::backend::Backend;
 use crate::config::{self, Config};
 use crate::modules;
-use crate::wm;
 use crate::args;
 use std::time::{Duration, Instant};
 use signal_hook::iterator::Signals;
 
-pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &args::AppParams) {
+pub fn run<B: Backend>(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &args::AppParams) {
 	let mut counters: Vec<Duration> = Vec::new();
 	let mut interrupts: Vec<bool> = vec![false; modules.len()];
 	let mut strings: Vec<Option<String>> = vec![None; modules.len()];
@@ -104,7 +104,7 @@ pub fn run(config: &Config, modules: &mut Vec<modules::ModuleRuntime>, params: &
 		output += &config.right_pad;
 
 		if output != last_output {
-			wm::set_root_name(&output);
+			B::output(&output);
 			last_output = output;
 		}
 

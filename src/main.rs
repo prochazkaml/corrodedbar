@@ -2,35 +2,50 @@ mod config;
 mod module;
 mod modules;
 mod scheduler;
-mod wm;
+mod backend;
 mod utils;
 mod args;
 mod formatter;
 
-fn run(params: &args::AppParams) -> Result<(), String> {
+use crate::backend::Backend;
+use crate::backend::x11::X11Backend;
+use crate::backend::stdout::StdoutBackend;
+
+fn run<B: Backend>(params: &args::AppParams) -> Result<(), String> {
 	let config = config::load_config()?;
 
 	let mut loaded_modules = modules::init(&config)?;
 	eprintln!("{} module(s) enabled.", loaded_modules.len());
 
-	scheduler::run(&config, &mut loaded_modules, params);
+	scheduler::run::<B>(&config, &mut loaded_modules, params);
 
 	Ok(())
+}
+
+fn main_with_backend<B: Backend>(params: &args::AppParams) {
+	loop {
+		match run::<B>(params) {
+			Ok(()) => {
+				eprintln!("Detected config file change, reloading.");
+			},
+			Err(err) => {
+				B::output(&err);
+				eprintln!("Init failed: {}", err);
+				std::thread::sleep(std::time::Duration::from_millis(1000));
+			}
+		}
+	}
 }
 
 fn main() {
 	let params = args::init();
 
-	loop {
-		match run(&params) {
-			Ok(()) => {
-				eprintln!("Detected config file change, reloading.");
-			},
-			Err(err) => {
-				wm::set_root_name(&err);
-				eprintln!("Init failed: {}", err);
-				std::thread::sleep(std::time::Duration::from_millis(1000));
-			}
+	match params.backend.as_str() {
+		"x11" => main_with_backend::<X11Backend>(&params),
+		"stdout" => main_with_backend::<StdoutBackend>(&params),
+		x => {
+			eprintln!("Invalid backend: {}", x);
+			std::process::exit(1)
 		}
 	}
 }
