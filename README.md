@@ -1,6 +1,9 @@
 # corrodedbar
 
-A simple statusbar for X11 window managers which display the root window name somewhere on screen (such as dwm).
+A simple statusbar for your favourite window manager which either:
+
+- displays the root window name somewhere on screen (such as dwm), or
+- uses Waybar (see below).
 
 Oh, and it's written in Rust. 🦀
 
