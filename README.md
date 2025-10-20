@@ -2,7 +2,7 @@
 
 A simple statusbar for your favourite window manager which either:
 
-- displays the root window name somewhere on screen (such as dwm), or
+- displays the X11 root window name somewhere on screen (such as dwm), or
 - uses Waybar (see below).
 
 Oh, and it's written in Rust. 🦀
