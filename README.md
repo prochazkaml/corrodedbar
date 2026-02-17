@@ -1,3 +1,7 @@
+# Moved over to [Codeberg](https://codeberg.org/prochazkaml/corrodedbar).
+
+---
+
 # corrodedbar
 
 A simple statusbar for your favourite window manager which either:
